@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# qspos_web
+# sistema_dy
 
 A new Flutter project.
 
@@ -15,6 +14,3 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
-=======
-# dycris_system
->>>>>>> 80c88078a01139eb37250d9da53edb8066f45e58
