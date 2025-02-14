@@ -354,46 +354,166 @@ function handleError(res, status, message, error) {
   });
 }
 
-// Inicio del servidor
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
 
-
-////////////////////ACÁ EMPIEZA LA API DE MOVIMIENTOS///////////////////////
-///VENTAS PUT
-app.put("/api/ventas/:id", async (req, res) => {
+/////////////////////////////MOVIMIENTOS/////////////////////////
+////VENTAS AQUI EMPIEZAN DE MOVIMIENTOS/////////////////
+// AGREGAR UNA VENTA
+// AGREGAR UNA VENTA (actualizado)
+app.post("/api/ventas", async (req, res) => {
   try {
-    const { id } = req.params;
-    const { cantidad, total, fecha, cliente } = req.body; // Asegúrate de enviar estos datos desde el frontend
+    const {
+      cliente_id,
+      tipo_factura,
+      metodo_pago,
+      total,
+      descripcion_compra,
+      productos, // Array de productos: { codigo_producto, cantidad, precio_unitario }
+      fecha_venta,
+    } = req.body;
 
-    // Verificar si la venta existe
-    const [ventaExistente] = await req.db.query("SELECT * FROM ventas WHERE id = ?", [id]);
-    if (ventaExistente.length === 0) {
-      return res.status(404).json({ message: "Venta no encontrada" });
+    // Validar stock antes de proceder
+    for (const producto of productos) {
+      const [inventario] = await req.db.query(
+        "SELECT stock_existencia FROM inventario WHERE codigo = ?",
+        [producto.codigo_producto]
+      );
+
+      if (inventario.length === 0) {
+        return res.status(404).json({ message: `Producto ${producto.codigo_producto} no encontrado` });
+      }
+
+      if (inventario[0].stock_existencia < producto.cantidad) {
+        return res.status(400).json({ message: `Stock insuficiente para el producto ${producto.codigo_producto}` });
+      }
     }
 
-    // Actualizar la venta
-    await req.db.query(
-      `UPDATE ventas SET cantidad = ?, total = ?, fecha = ?, cliente = ? WHERE id = ?`,
-      [cantidad, total, fecha, cliente, id]
+    // Insertar la venta
+    const [ventaResult] = await req.db.query(
+      `INSERT INTO ventas (cliente_id, tipo_factura, metodo_pago, total, descripcion_compra, fecha_venta)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [cliente_id, tipo_factura, metodo_pago, total, descripcion_compra, fecha_venta]
     );
 
-    res.json({ message: "Venta actualizada correctamente" });
+    const ventaId = ventaResult.insertId;
+
+    // Insertar detalles de la venta y actualizar stock
+    for (const producto of productos) {
+      await req.db.query(
+        `INSERT INTO detalle_ventas (idVentas, codigo_producto, nombre, cantidad, precio_unitario, subtotal)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [ventaId, producto.codigo_producto, producto.nombre, producto.cantidad, producto.precio_unitario, producto.subtotal]
+      );
+
+      // Actualizar stock en inventario
+      await req.db.query(
+        "UPDATE inventario SET stock_existencia = stock_existencia - ? WHERE codigo = ?",
+        [producto.cantidad, producto.codigo_producto]
+      );
+    }
+
+    res.status(201).json({ message: "Venta agregada correctamente", ventaId });
   } catch (err) {
-    console.error("Error al actualizar la venta:", err);
-    res.status(500).json({ message: "Error al actualizar la venta", error: err.message });
+    console.error("Error al agregar la venta:", err);
+    res.status(500).json({ message: "Error al agregar la venta", error: err.message });
   }
 });
 
 
-///VENTAS DELETE
+app.get('/api/ventas', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        v.idVentas,
+        MAX(v.fecha_venta) AS fecha_venta,
+        MAX(v.tipo_factura) AS tipo_factura,
+        MAX(v.metodo_pago) AS metodo_pago,
+        MAX(v.total) AS total,
+        MAX(v.descripcion_compra) AS descripcion_compra,
+        MAX(c.nombre) AS cliente_nombre,
+        MAX(c.direccion) AS direccion_cliente,
+        MAX(c.dui) AS dui,
+        MAX(c.nit) AS nit,
+        JSON_ARRAYAGG(
+          JSON_OBJECT(
+            'codigo', dv.codigo_producto,
+            'nombre', i.nombre,
+            'cantidad', dv.cantidad,
+            'precio', dv.precio_unitario,
+            'costo', i.precio_compra
+          )
+        ) AS productos
+      FROM ventas v
+      LEFT JOIN clientes c ON v.cliente_id = c.idCliente
+      LEFT JOIN detalle_ventas dv ON v.idVentas = dv.idVentas
+      LEFT JOIN inventario i ON dv.codigo_producto = i.codigo
+      GROUP BY v.idVentas
+    `;
+
+    const [rows] = await req.db.query(query);
+    res.json(rows);
+    
+  } catch (err) {
+    console.error("Error SQL:", err.sqlMessage);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+
+
+
+// ACTUALIZAR UNA VENTA (actualizado)
+app.put("/api/ventas/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      direccion_cliente,
+      descripcion_compra,
+      tipo_factura,
+      metodo_pago
+    } = req.body;
+
+    await req.db.query(
+      `UPDATE ventas SET 
+        descripcion_compra = ?, 
+        tipo_factura = ?, 
+        metodo_pago = ?
+       WHERE idVentas = ?`,
+      [descripcion_compra, tipo_factura, metodo_pago, id]
+    );
+
+    // Actualizar dirección en clientes
+    await req.db.query(
+      `UPDATE clientes SET direccion = ? 
+       WHERE idCliente = (
+         SELECT cliente_id FROM ventas WHERE idVentas = ?
+       )`,
+      [direccion_cliente, id]
+    );
+
+    res.json({ message: "Venta actualizada correctamente" });
+  } catch (err) {
+    console.error("Error al actualizar:", err);
+    res.status(500).json({ 
+      message: "Error al actualizar", 
+      error: err.message 
+    });
+  }
+});
+
+
+
+// ELIMINAR UNA VENTA
 app.delete("/api/ventas/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [result] = await req.db.query("DELETE FROM ventas WHERE id = ?", [id]);
+    // Eliminar los detalles de la venta
+    await req.db.query("DELETE FROM detalle_ventas WHERE idVentas = ?", [id]);
+
+    // Eliminar la venta
+    const [result] = await req.db.query("DELETE FROM ventas WHERE idVentas = ?", [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Venta no encontrada" });
@@ -405,4 +525,316 @@ app.delete("/api/ventas/:id", async (req, res) => {
     res.status(500).json({ message: "Error al eliminar la venta", error: err.message });
   }
 });
-////////////////////ACÁ TERMINA LA API DE MOVIMIENTOS///////////////////////
+
+///VENTAS AQUI TERMINA DE MOVIMIENTOS/////////////////
+///////////////NUEVO ENDPOINT PARA INVENTARIO/////////////////////
+// Nuevo endpoint para buscar por código exacto
+app.get('/api/inventario/codigo/:codigo', async (req, res) => {
+  try {
+    const { codigo } = req.params;
+    const [rows] = await req.db.query(
+      "SELECT * FROM inventario WHERE codigo = ?",
+      [codigo]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({});
+    }
+    
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Error buscando producto:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+///// CLIENTES  DE MOVIMIENTOS/////
+
+// Obtener todos los clientes
+app.get('/api/clientes', async (req, res) => {
+  try {
+    const [rows] = await req.db.query('SELECT * FROM clientes');
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al obtener clientes:", err);
+    res.status(500).json({ message: "Error al obtener clientes", error: err.message });
+  }
+});
+
+// Agregar un nuevo cliente
+app.post('/api/clientes', async (req, res) => {
+  try {
+    const { nombre, direccion, dui, nit } = req.body;
+
+    const [result] = await req.db.query(
+      'INSERT INTO clientes (nombre, direccion, dui, nit) VALUES (?, ?, ?, ?)',
+      [nombre, direccion, dui, nit]
+    );
+
+    res.status(201).json({ message: "Cliente agregado correctamente", idCliente: result.insertId });
+  } catch (err) {
+    console.error("Error al agregar cliente:", err);
+    res.status(500).json({ message: "Error al agregar cliente", error: err.message });
+  }
+});
+
+// Actualizar un cliente
+app.put('/api/clientes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, direccion, dui, nit } = req.body;
+
+    const [result] = await req.db.query(
+      'UPDATE clientes SET nombre = ?, direccion = ?, dui = ?, nit = ? WHERE idCliente = ?',
+      [nombre, direccion, dui, nit, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
+
+    res.json({ message: "Cliente actualizado correctamente" });
+  } catch (err) {
+    console.error("Error al actualizar cliente:", err);
+    res.status(500).json({ message: "Error al actualizar cliente", error: err.message });
+  }
+});
+
+// Eliminar un cliente
+app.delete('/api/clientes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [result] = await req.db.query('DELETE FROM clientes WHERE idCliente = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
+
+    res.json({ message: "Cliente eliminado correctamente" });
+  } catch (err) {
+    console.error("Error al eliminar cliente:", err);
+    res.status(500).json({ message: "Error al eliminar cliente", error: err.message });
+  }
+});
+
+
+///// CLIENTES  DE MOVIMIENTOS, TERMINA AQUI/////
+///// TRASLADOS /////
+
+// Obtener todos los traslados
+app.get('/api/traslados', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        t.id, t.codigo_traslado, t.cantidad, t.fecha_traslado, t.estado,
+        i.nombre AS producto_nombre,
+        s1.nombre AS sucursal_origen,
+        s2.nombre AS sucursal_destino,
+        e.nombres AS empleado_nombre
+      FROM traslados t
+      INNER JOIN inventario i ON t.inventario_id = i.id
+      INNER JOIN sucursal s1 ON t.origen_id = s1.id
+      INNER JOIN sucursal s2 ON t.destino_id = s2.id
+      INNER JOIN empleados e ON t.empleado_id = e.id
+    `;
+
+    const [rows] = await req.db.query(query);
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al obtener los traslados:", err);
+    res.status(500).json({ message: "Error al obtener los traslados", error: err.message });
+  }
+});
+
+// Filtrar traslados por fecha
+app.get('/api/traslados/filtrar', async (req, res) => {
+  try {
+    const { fecha } = req.query;
+
+    const query = `
+      SELECT 
+        t.id, t.codigo_traslado, t.cantidad, t.fecha_traslado, t.estado,
+        i.nombre AS producto_nombre,
+        s1.nombre AS sucursal_origen,
+        s2.nombre AS sucursal_destino,
+        e.nombres AS empleado_nombre
+      FROM traslados t
+      INNER JOIN inventario i ON t.inventario_id = i.id
+      INNER JOIN sucursal s1 ON t.origen_id = s1.id
+      INNER JOIN sucursal s2 ON t.destino_id = s2.id
+      INNER JOIN empleados e ON t.empleado_id = e.id
+      WHERE DATE(t.fecha_traslado) = ?
+    `;
+
+    const [rows] = await req.db.query(query, [fecha]);
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al filtrar los traslados por fecha:", err);
+    res.status(500).json({ message: "Error al filtrar los traslados por fecha", error: err.message });
+  }
+});
+
+// Agregar un nuevo traslado
+app.post('/api/traslados', async (req, res) => {
+  try {
+    const {
+      codigo_traslado,
+      inventario_id,
+      origen_id,
+      destino_id,
+      cantidad,
+      empleado_id,
+      estado,
+    } = req.body;
+
+    const [result] = await req.db.query(
+      `INSERT INTO traslados (codigo_traslado, inventario_id, origen_id, destino_id, cantidad, empleado_id, estado)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [codigo_traslado, inventario_id, origen_id, destino_id, cantidad, empleado_id, estado]
+    );
+
+    res.status(201).json({ message: "Traslado agregado correctamente", id: result.insertId });
+  } catch (err) {
+    console.error("Error al agregar el traslado:", err);
+    res.status(500).json({ message: "Error al agregar el traslado", error: err.message });
+  }
+});
+
+// Actualizar un traslado
+app.put('/api/traslados/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      codigo_traslado,
+      inventario_id,
+      origen_id,
+      destino_id,
+      cantidad,
+      empleado_id,
+      estado,
+    } = req.body;
+
+    const [result] = await req.db.query(
+      `UPDATE traslados 
+       SET codigo_traslado = ?, inventario_id = ?, origen_id = ?, destino_id = ?, cantidad = ?, empleado_id = ?, estado = ?
+       WHERE id = ?`,
+      [codigo_traslado, inventario_id, origen_id, destino_id, cantidad, empleado_id, estado, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Traslado no encontrado" });
+    }
+
+    res.json({ message: "Traslado actualizado correctamente" });
+  } catch (err) {
+    console.error("Error al actualizar el traslado:", err);
+    res.status(500).json({ message: "Error al actualizar el traslado", error: err.message });
+  }
+});
+
+// Eliminar un traslado
+app.delete('/api/traslados/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [result] = await req.db.query('DELETE FROM traslados WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Traslado no encontrado" });
+    }
+
+    res.json({ message: "Traslado eliminado correctamente" });
+  } catch (err) {
+    console.error("Error al eliminar el traslado:", err);
+    res.status(500).json({ message: "Error al eliminar el traslado", error: err.message });
+  }
+});
+
+
+
+///// OFERTAS /////
+
+// Obtener todas las ofertas
+app.get('/api/ofertas', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        o.id, o.descuento, o.fecha_inicio, o.fecha_fin, o.estado,
+        i.codigo, i.nombre AS producto_nombre, i.precio_venta
+      FROM ofertas o
+      INNER JOIN inventario i ON o.inventario_id = i.id
+    `;
+
+    const [rows] = await req.db.query(query);
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al obtener las ofertas:", err);
+    res.status(500).json({ message: "Error al obtener las ofertas", error: err.message });
+  }
+});
+
+// Agregar una nueva oferta
+app.post('/api/ofertas', async (req, res) => {
+  try {
+    const { inventario_id, descuento, fecha_inicio, fecha_fin } = req.body;
+
+    const [result] = await req.db.query(
+      `INSERT INTO ofertas (inventario_id, descuento, fecha_inicio, fecha_fin)
+       VALUES (?, ?, ?, ?)`,
+      [inventario_id, descuento, fecha_inicio, fecha_fin]
+    );
+
+    res.status(201).json({ message: "Oferta agregada correctamente", id: result.insertId });
+  } catch (err) {
+    console.error("Error al agregar la oferta:", err);
+    res.status(500).json({ message: "Error al agregar la oferta", error: err.message });
+  }
+});
+
+// Actualizar una oferta
+app.put('/api/ofertas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { inventario_id, descuento, fecha_inicio, fecha_fin, estado } = req.body;
+
+    const [result] = await req.db.query(
+      `UPDATE ofertas 
+       SET inventario_id = ?, descuento = ?, fecha_inicio = ?, fecha_fin = ?, estado = ?
+       WHERE id = ?`,
+      [inventario_id, descuento, fecha_inicio, fecha_fin, estado, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Oferta no encontrada" });
+    }
+
+    res.json({ message: "Oferta actualizada correctamente" });
+  } catch (err) {
+    console.error("Error al actualizar la oferta:", err);
+    res.status(500).json({ message: "Error al actualizar la oferta", error: err.message });
+  }
+});
+
+// Eliminar una oferta
+app.delete('/api/ofertas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [result] = await req.db.query('DELETE FROM ofertas WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Oferta no encontrada" });
+    }
+
+    res.json({ message: "Oferta eliminada correctamente" });
+  } catch (err) {
+    console.error("Error al eliminar la oferta:", err);
+    res.status(500).json({ message: "Error al eliminar la oferta", error: err.message });
+  }
+});
+
+// Inicio del servidor
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+});

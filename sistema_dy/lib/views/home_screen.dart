@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'inventario/inventory_screen.dart';
 import 'login/login_screen.dart';
 import 'login/usuarios_screen.dart';
-import 'movimientos/ventas_screen.dart';
+import 'movimientos/movimientos_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -274,7 +274,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => VentasScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const MovimientosScreen()),
                       );
                     },
                   ),
