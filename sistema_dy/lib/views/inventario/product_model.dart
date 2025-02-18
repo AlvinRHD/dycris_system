@@ -53,9 +53,9 @@ class Product {
       nro_chasis: json['nro_chasis'],
       categoria: json['categoria'],
       sucursal: json['sucursal'],
-      precioCompra: (json['precio_compra'] is String)
-          ? double.tryParse(json['precio_compra']) ?? 0.0
-          : json['precio_compra'].toDouble(),
+      precioCompra: (json['costo'] is String)
+          ? double.tryParse(json['costo']) ?? 0.0
+          : json['costo'].toDouble(),
       credito: (json['credito'] is String)
           ? double.tryParse(json['credito']) ?? 0.0
           : json['credito'].toDouble(),
@@ -83,7 +83,7 @@ class Product {
       'nro_chasis': nro_chasis,
       'categoria': categoria,
       'sucursal': sucursal,
-      'precio_compra': precioCompra,
+      'costo': precioCompra,
       'credito': credito,
       'precio_venta': precioVenta,
       'stock_existencia': stockExistencia,

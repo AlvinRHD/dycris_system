@@ -43,6 +43,10 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   DateTime _fechaVenta = DateTime.now();
   List<Map<String, dynamic>> _productosSeleccionados = [];
 
+  // Variables para controlar el foco de los TextField de búsqueda
+  bool _clienteTextFieldFocus = false;
+  bool _productoTextFieldFocus = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +55,9 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   }
 
   void _buscarClientes() async {
+    if (!_clienteTextFieldFocus)
+      return; // Solo buscar si el TextField de cliente tiene foco
+
     if (_clienteController.text.isEmpty) {
       setState(() => _clientes = []);
       return;
@@ -71,6 +78,9 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   }
 
   void _buscarProductos() async {
+    if (!_productoTextFieldFocus)
+      return; // Solo buscar si el TextField de producto tiene foco
+
     final query = _codigoProductoController.text;
     if (query.isEmpty) {
       setState(() => _productosSugeridos = []);
@@ -98,8 +108,12 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
       _direccionClienteController.text = cliente.direccion ?? 'Sin Dirección';
       _duiController.text = cliente.dui ?? 'Sin DUI';
       _nitController.text = cliente.nit ?? 'Sin NIT';
-      _clientes = [];
+      _clientes = []; // Limpia las sugerencias
+      _clienteTextFieldFocus =
+          false; // Quita el foco para que no reaparezcan las sugerencias
     });
+    FocusScope.of(context)
+        .unfocus(); // Quita el foco del TextField y cierra el teclado
   }
 
   void _agregarProducto() async {
@@ -179,9 +193,13 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
         _precioProductoController.clear();
         _cantidadController.clear();
         _descuentoController.clear();
-        _productosSugeridos = [];
+        _productosSugeridos = []; // Limpia sugerencias de productos
+        _productoTextFieldFocus =
+            false; // Quita el foco para que no reaparezcan las sugerencias
         _calcularTotales();
       });
+      FocusScope.of(context)
+          .unfocus(); // Quita el foco del TextField y cierra el teclado
     } catch (e) {
       print('Error agregando producto: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -259,14 +277,33 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
           child: Column(
             children: [
               // Sección Cliente
-              TextFormField(
-                controller: _clienteController,
-                decoration: InputDecoration(
-                  labelText: "Buscar Cliente",
-                  prefixIcon: Icon(Icons.search),
+              FocusScope(
+                // Encierra la búsqueda de cliente con FocusScope
+                onFocusChange: (hasFocus) {
+                  setState(() {
+                    _clienteTextFieldFocus =
+                        hasFocus; // Actualiza _clienteTextFieldFocus según el foco
+                    if (!hasFocus) {
+                      _clientes = []; // Limpia sugerencias si pierde el foco
+                    }
+                  });
+                },
+                child: TextFormField(
+                  controller: _clienteController,
+                  decoration: InputDecoration(
+                    labelText: "Buscar Cliente",
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (value) {
+                    // Dispara la búsqueda solo si tiene foco
+                    if (_clienteTextFieldFocus) {
+                      _buscarClientes();
+                    }
+                  },
                 ),
               ),
-              if (_clientes.isNotEmpty)
+              if (_clientes.isNotEmpty &&
+                  _clienteTextFieldFocus) // Muestra sugerencias solo si hay clientes y el TextField tiene foco
                 SizedBox(
                   height: 100,
                   child: ListView.builder(
@@ -330,13 +367,33 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
               SizedBox(height: 20),
               Text("Agregar Productos",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              TextFormField(
-                controller: _codigoProductoController,
-                decoration: InputDecoration(
-                    labelText: "Código/Nombre Producto",
-                    prefixIcon: Icon(Icons.search)),
+              FocusScope(
+                // Encerramos la búsqueda de producto con FocusScope
+                onFocusChange: (hasFocus) {
+                  setState(() {
+                    _productoTextFieldFocus =
+                        hasFocus; // Actualiza _productoTextFieldFocus según el foco
+                    if (!hasFocus) {
+                      _productosSugeridos =
+                          []; // Limpia sugerencias si pierde el foco
+                    }
+                  });
+                },
+                child: TextFormField(
+                  controller: _codigoProductoController,
+                  decoration: InputDecoration(
+                      labelText: "Código/Nombre Producto",
+                      prefixIcon: Icon(Icons.search)),
+                  onChanged: (value) {
+                    // Dispara la búsqueda solo si tiene foco
+                    if (_productoTextFieldFocus) {
+                      _buscarProductos();
+                    }
+                  },
+                ),
               ),
-              if (_productosSugeridos.isNotEmpty)
+              if (_productosSugeridos.isNotEmpty &&
+                  _productoTextFieldFocus) // Muestra sugerencias solo si hay productos y el TextField tiene foco
                 SizedBox(
                   height: 100,
                   child: ListView.builder(
@@ -354,6 +411,10 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                             _productosSugeridos[index]['precio_venta']
                                 .toString();
                         setState(() => _productosSugeridos = []);
+                        _productoTextFieldFocus =
+                            false; // Quita el foco al seleccionar producto
+                        FocusScope.of(context)
+                            .unfocus(); // Quita el foco del TextField
                       },
                     ),
                   ),

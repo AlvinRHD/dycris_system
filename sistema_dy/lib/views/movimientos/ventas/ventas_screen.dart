@@ -1,8 +1,9 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'agregar_venta_modal.dart';
+
+// Correct import for screen, not modal
 import 'clientes/agregar_cliente_modal.dart';
 import 'clientes/clientes_screen.dart';
 import 'editar_venta_screen.dart';
@@ -40,7 +41,7 @@ class _VentasScreenState extends State<VentasScreen> {
                 .toString()
                 .toLowerCase()
                 .contains(query) ||
-            venta['codigo_producto'].toString().toLowerCase().contains(query) ||
+            venta['idVentas'].toString().toLowerCase().contains(query) ||
             venta['descripcion_compra']
                 .toString()
                 .toLowerCase()
@@ -50,13 +51,11 @@ class _VentasScreenState extends State<VentasScreen> {
     });
   }
 
-// En _cargarVentas()
   Future<void> _cargarVentas() async {
     try {
       final listaVentas = await _ventasController.obtenerVentas();
 
       final ventasProcesadas = listaVentas.map<Map<String, dynamic>>((venta) {
-        // Convertir valores numéricos con manejo de nulls
         return {
           'idVentas': venta['idVentas'],
           'fecha_venta': venta['fecha_venta'],
@@ -86,7 +85,7 @@ class _VentasScreenState extends State<VentasScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al procesar datos: $e'),
+          content: Text('Error al cargar ventas: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -209,111 +208,227 @@ class _VentasScreenState extends State<VentasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Ventas',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 0,
+        title: Text(
+          'Ventas',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
         iconTheme: IconThemeData(color: Colors.black),
         actions: [
-          IconButton(
-            icon: Icon(Icons.person_add), // Icono para agregar cliente
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => AgregarClienteModal(
-                        onClienteAgregado: () {},
-                      )),
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.group),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ClientesScreen()),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
           Padding(
-            padding: EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Buscar ventas...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 4.0), // Reduced horizontal padding
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AgregarVentaScreen()),
+                );
+                if (result == true) {
+                  _cargarVentas();
+                }
+              },
+              icon: Icon(Icons.add, color: Colors.white),
+              label:
+                  Text("Agregar Venta", style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
-          Expanded(
-            child: filteredVentas.isEmpty
-                ? Center(child: Text("No hay ventas disponibles"))
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columnSpacing: 12,
-                      columns: [
-                        DataColumn(label: Text('Código')),
-                        DataColumn(label: Text('Cliente')),
-                        DataColumn(label: Text('Descripción')),
-                        DataColumn(label: Text('Costo')),
-                        DataColumn(label: Text('Precio')),
-                        DataColumn(label: Text('Total')),
-                        DataColumn(label: Text('Acciones')),
-                      ],
-                      rows: filteredVentas.map((venta) {
-                        return DataRow(cells: [
-                          DataCell(Text(venta['idVentas'].toString())),
-                          DataCell(Text(venta['cliente_nombre'] ?? 'N/A')),
-                          DataCell(Text(venta['descripcion_compra'] ?? 'N/A')),
-                          DataCell(Text(
-                              '\$${venta['productos'][0]['costo'].toStringAsFixed(2)}')),
-                          DataCell(Text(
-                              '\$${venta['productos'][0]['precio'].toStringAsFixed(2)}')),
-                          DataCell(
-                              Text('\$${venta['total'].toStringAsFixed(2)}')),
-                          DataCell(
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.visibility),
-                                  onPressed: () => _mostrarDetalleVenta(venta),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.edit),
-                                  onPressed: () => _editarVenta(venta),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete),
-                                  onPressed: () =>
-                                      _eliminarVenta(venta['idVentas']),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ]);
-                      }).toList(),
-                    ),
-                  ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 4.0), // Added padding for spacing
+            child: ElevatedButton.icon(
+              // Botón "Agregar Cliente" en AppBar
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        AgregarClienteModal(onClienteAgregado: () {})),
+              ),
+              icon: Icon(Icons.person_add_alt_1, color: Colors.white),
+              label: Text("Agregar Cliente",
+                  style: TextStyle(color: Colors.white)), // No text label
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey[600], // Grey button for Add Client
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 8.0), // Padding for the last button
+            child: ElevatedButton.icon(
+              // Botón "Ver Clientes" en AppBar
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ClientesScreen()),
+              ),
+              icon: Icon(Icons.group, color: Colors.white),
+              label: Text("Ver listado de clientes",
+                  style: TextStyle(color: Colors.white)), // No text label
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    Colors.grey[600], // Grey button for View Clients
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => AgregarVentaScreen()),
-          );
-
-          if (result == true) {
-            _cargarVentas();
-          }
-        },
-        child: Icon(Icons.add),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(color: Colors.black12, blurRadius: 6),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Container(
+                        // Wrapped TextField with Container
+                        decoration: BoxDecoration(
+                          // BoxDecoration for rounded corners and background
+                          borderRadius: BorderRadius.circular(
+                              15.0), // More rounded search bar
+                          color: Colors.grey[200],
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Buscar ventas...',
+                            prefixIcon: Icon(Icons.search, color: Colors.grey),
+                            border: InputBorder
+                                .none, // No border for TextField inside Container
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 20.0,
+                                vertical: 8.0), // Reduced vertical padding
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  'Historial de Ventas',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18),
+                  textAlign: TextAlign.left,
+                ),
+              ),
+              Expanded(
+                child: filteredVentas.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Text(
+                            "No hay ventas disponibles",
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columnSpacing: 12,
+                          headingRowColor: MaterialStateColor.resolveWith(
+                              (states) => Colors.grey[200]!),
+                          columns: const [
+                            DataColumn(
+                                label: Text('Código',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Cliente',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Descripción',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Costo',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Precio',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Total',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Acciones',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                          ],
+                          rows: filteredVentas.map((venta) {
+                            return DataRow(cells: [
+                              DataCell(Text(venta['idVentas'].toString())),
+                              DataCell(Text(venta['cliente_nombre'] ?? 'N/A')),
+                              DataCell(
+                                  Text(venta['descripcion_compra'] ?? 'N/A')),
+                              DataCell(Text(
+                                  '\$${venta['productos'][0]['costo'].toStringAsFixed(2)}')),
+                              DataCell(Text(
+                                  '\$${venta['productos'][0]['precio'].toStringAsFixed(2)}')),
+                              DataCell(Text(
+                                  '\$${venta['total'].toStringAsFixed(2)}')),
+                              DataCell(
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.visibility,
+                                          color: Colors.grey[600]),
+                                      onPressed: () =>
+                                          _mostrarDetalleVenta(venta),
+                                    ),
+                                    IconButton(
+                                      icon:
+                                          Icon(Icons.edit, color: Colors.blue),
+                                      onPressed: () => _editarVenta(venta),
+                                    ),
+                                    IconButton(
+                                      icon:
+                                          Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () =>
+                                          _eliminarVenta(venta['idVentas']),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ]);
+                          }).toList(),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'inventario/inventory_screen.dart';
+import 'package:sistema_dy/views/categoria/lista_categoria.dart';
+import 'package:sistema_dy/views/proveedores/proveedores_screen.dart';
+import 'package:sistema_dy/views/sucursal/mostrar_sucursales.dart';
+
+import 'inventario/inventario_screen.dart';
 import 'login/login_screen.dart';
 import 'login/usuarios_screen.dart';
 import 'movimientos/movimientos_screen.dart';
@@ -245,15 +249,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (context) =>
-                                const InventoryScreen()), // Redirige a Inventario
+                                InventarioScreen()), // Redirige a Inventario
                       );
                     },
                   ),
                   DashboardCard(
                     title: 'Proveedores',
-                    icon: Icons.local_shipping,
-                    color: colorScheme.secondary,
-                    onTap: () => _showSnack(context, 'Proveedores'),
+                    icon: Icons.person_remove_rounded,
+                    color: colorScheme.tertiary,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ProveedoresScreen()),
+                      );
+                    },
+                  ),
+                  DashboardCard(
+                    title: 'Categorias',
+                    icon: Icons.category,
+                    color: colorScheme.tertiary,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => ListaCategorias()),
+                      );
+                    },
+                  ),
+                  DashboardCard(
+                    title: 'Sucursales',
+                    icon: Icons.store,
+                    color: colorScheme.tertiary,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => MostrarSucursales()),
+                      );
+                    },
                   ),
                   DashboardCard(
                     title: 'Usuarios',
@@ -279,16 +313,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     },
                   ),
-                  ...List.generate(
-                    5,
-                    (index) => DashboardCard(
-                      title: ['Temporal', 'Por Definir'][index % 2],
-                      icon: [Icons.timer, Icons.help_outline][index % 2],
-                      color: Colors.grey,
-                      onTap: () =>
-                          _showSnack(context, 'Placeholder ${index + 1}'),
-                    ),
-                  ),
+                  //DashboardCard(
+                  //title: 'Movimientos',
+                  //icon: Icons.swap_horiz,
+                  //color: Colors.orange,
+                  //onTap: () {
+                  //Navigator.push(
+                  //context,
+                  //MaterialPageRoute(
+                  //builder: (context) => const MovimientosScreen()),
+                  //);
+                  //},
+                  //),
                 ],
               );
             },

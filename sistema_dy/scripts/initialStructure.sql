@@ -22,7 +22,10 @@ CREATE TABLE inventario (
   nro_poliza varchar(50) DEFAULT NULL,
   nro_lote varchar(50) DEFAULT NULL
 );
-select * from sucursal;
+
+ALTER TABLE inventario ADD COLUMN imagen varchar(255) NOT NULL;
+
+select * from inventario;
 
 #######--TABLE PROVEEDORES --##########
 CREATE TABLE proveedores (
@@ -119,29 +122,47 @@ CREATE TABLE `ofertas` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
-select * from ofertas;
+select * from usuarios;
+
+INSERT INTO usuarios (`nombre_completo`, `usuario`, `password`, `tipo_cuenta`, `cargo`,  `fecha_creacion`, `fecha_actualizacion`) 
+VALUES ('admin prueba', 'admin2', 4444, 'admin', 'administrador', DATE(NOW()),DATE(NOW()));
+
+
+      
+      
+
+CREATE TABLE `historial_ajustes` (
+  `id` int(20) NOT NULL,
+  `codigo` varchar(50) NOT NULL,
+  `nombre` varchar(50) NOT NULL,
+  `descripcion` text NOT NULL,
+  `precio` decimal(20,0) NOT NULL,
+  `fecha` date ,
+  `stock` int(20) NOT NULL,
+  `motivo` text NOT NULL
+);
+
+ALTER TABLE `historial_ajustes`
+  ADD PRIMARY KEY (`id`);
+
+INSERT INTO `historial_ajustes` (`id`, `codigo`, `nombre`, `descripcion`, `precio`, `fecha`, `stock`, `motivo`) VALUES
+(1, '885', 'hhyyh', 'gg', 24, '2025-02-13', 6567, 'gg'),
+(2, '425442', 'zapato', 'descripc', 30, '2025-02-13', 2, 'zapatito cafe');
 
 
 
- SELECT 
-        v.idVentas,
-        v.fecha_venta,
-        v.tipo_factura,
-        v.metodo_pago,
-        v.total,
-        v.descripcion_compra,
-        c.nombre AS cliente_nombre,
-        JSON_ARRAYAGG(
-          JSON_OBJECT(
-            'codigo', dv.codigo_producto,
-            'nombre', i.nombre,
-            'cantidad', dv.cantidad,
-            'precio', dv.precio_unitario,
-            'costo', i.precio_compra
-          )
-        ) AS productos
-      FROM ventas v
-      LEFT JOIN clientes c ON v.cliente_id = c.idCliente
-      LEFT JOIN detalle_ventas dv ON v.idVentas = dv.idVentas
-      LEFT JOIN inventario i ON dv.codigo_producto = i.codigo
-      GROUP BY v.idVentas
+CREATE TABLE `usuarios` (
+  `id` int(11) NOT NULL,
+  `nombre_completo` varchar(255) NOT NULL,
+  `usuario` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `tipo_cuenta` varchar(50) NOT NULL CHECK (`tipo_cuenta` in ('Admin','Root','Normal')),
+  `cargo` varchar(50) NOT NULL CHECK (`cargo` in ('Administrador','Gerente','Cajero','Vendedor','Bodeguero')),
+  `fecha_creacion` datetime NOT NULL,
+  `fecha_actualizacion` datetime NOT NULL
+);
+
+drop table empleados;
+
+
+

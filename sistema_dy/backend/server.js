@@ -4,12 +4,38 @@ const mysql = require("mysql2/promise"); // MySQL con soporte para promesas
 const cors = require("cors"); // Manejo de CORS
 const bcrypt = require("bcryptjs"); // Encriptación de contraseñas
 require("dotenv").config(); // Variables de entorno
+const multer = require("multer"); // Subida de archivos
+const path = require("path");
+const fs = require("fs");
+
 
 const app = express(); // Inicialización de Express
 
 // Configuración de middlewares
-app.use(cors()); // Habilita CORS para todas las rutas
+
+app.use(cors()); // Habilita CORS para todas las 
 app.use(express.json()); // Parsea cuerpos de solicitud JSON
+// Configuración de las rutas estáticas para las imágenes
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Crear directorio de uploads si no existe
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+// Configuración de Multer para almacenar archivos
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir); // Usa la variable uploadsDir
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Usa un nombre único para evitar conflictos
+  },
+});
+
+const upload = multer({ storage: storage });
+
+
 
 // Configuración de la base de datos usando variables de entorno
 const dbConfig = {
@@ -41,46 +67,69 @@ pool.getConnection()
     console.error("Error de conexión:", err.message);
   });
 
-// ██████╗  ██████╗ ██╗   ██╗████████╗███████╗
-// ██╔══██╗██╔═══██╗██║   ██║╚══██╔══╝██╔════╝
-// ██████╔╝██║   ██║██║   ██║   ██║   █████╗  
-// ██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  
-// ██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗
-// Rutas del Inventario
 
-// GET: Obtener todos los productos
-// POST: Crear nuevo producto
-app.route("/api/inventario")
-  .get(async (req, res) => {
-    try {
-      const [results] = await req.db.query("SELECT * FROM inventario");
-      res.json(results);
-    } catch (err) {
-      handleError(res, 500, "Error al obtener inventario", err);
-    }
-  })
-  .post(async (req, res) => {
-    try {
-      const requiredFields = ['codigo', 'nombre', 'categoria', 'sucursal', 'precio_compra', 'precio_venta', 'stock_existencia'];
-      validateFields(req.body, requiredFields); // Validación de campos
-      
-      const [result] = await req.db.query("INSERT INTO inventario SET ?", [req.body]);
-      
-      res.status(201).json({
-        message: "Producto creado",
-        id: result.insertId // Retorna ID del nuevo producto
-      });
-    } catch (err) {
-      handleError(res, err.status || 500, err.message, err);
-    }
-  });
 
-  // GET: Obtener producto por ID
+
+
+////////////inventario////////////////////
+//Apis de el inventario:
+//Obtener inventario
+//APIS INVENTARIO
+//Obtener inventario
+app.get("/api/inventario", async (req, res) => {
+  try {
+    const tipo = req.query.tipo;
+
+    let query = "SELECT * FROM inventario";
+
+    if (tipo === "resumido") {
+      query = "SELECT * FROM inventario";
+    } else if (tipo === "detallado") {
+      query = `
+        SELECT 
+    i.id,
+    i.codigo,
+    i.imagen,
+    i.nombre AS inventario,
+    i.descripcion,
+    i.numero_motor,
+    i.numero_chasis,
+    c.nombre AS categoria,
+    s.nombre AS sucursal,
+    p.nombre AS proveedores,
+    i.costo,
+    i.credito,
+    i.precio_venta,
+    i.stock_existencia,
+    i.stock_minimo,
+    i.fecha_ingreso,
+    i.fecha_reingreso,
+    i.numero_poliza,
+    i.numero_lote
+FROM inventario i
+LEFT JOIN categoria c ON i.categoria_id = c.id
+LEFT JOIN sucursal s ON i.sucursal_id = s.id
+LEFT JOIN proveedores p ON i.proveedor_id = p.id;
+
+      `;
+    }
+
+    const [results] = await req.db.query(query);
+    res.json(results);
+  } catch (err) {
+    handleError(res, 500, "Error al obtener inventario", err);
+  }
+});
+
+// GET: Obtener producto por ID
 app.get("/api/inventario/:id", async (req, res) => {
   try {
     const { id } = req.params; // ID del producto
-    const [results] = await req.db.query("SELECT * FROM inventario WHERE id = ?", [id]);
-    
+    const [results] = await req.db.query(
+      "SELECT * FROM inventario WHERE id = ?",
+      [id]
+    );
+
     if (results.length === 0) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
@@ -91,92 +140,621 @@ app.get("/api/inventario/:id", async (req, res) => {
   }
 });
 
-
 app.put("/api/inventario/:id", async (req, res) => {
   const { id } = req.params;
   const {
-    codigo,
     nombre,
     descripcion,
-    nro_motor,
-    nro_chasis,
-    categoria,
-    sucursal,
-    precio_compra,
-    credito,
     precio_venta,
     stock_existencia,
-    stock_minimo,
-    fecha_ingreso,
-    fecha_reingreso,
-    nro_poliza,
-    nro_lote
+    motivo,
+    imagen,
   } = req.body;
+  console.log("ID del producto:", id);
+  console.log("Cuerpo de la solicitud:", req.body);
+
+  const connection = await req.db.getConnection();
 
   try {
+    await connection.beginTransaction();
+
     // Verificar si el producto existe
-    const [rows] = await req.db.query(
+    const [rows] = await connection.query(
       "SELECT * FROM inventario WHERE id = ?",
       [id]
     );
     if (rows.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
-    // Actualizar el producto
-    await req.db.query(
+    const { codigo } = rows[0]; // Obtener el código del producto
+
+    // Actualizar el producto en inventario, incluyendo la imagen
+    await connection.query(
       `UPDATE inventario SET 
-        codigo = ?, 
         nombre = ?, 
         descripcion = ?, 
-        nro_motor = ?, 
-        nro_chasis = ?, 
-        categoria = ?, 
-        sucursal = ?, 
-        precio_compra = ?, 
-        credito = ?, 
         precio_venta = ?, 
         stock_existencia = ?, 
-        stock_minimo = ?, 
-        fecha_ingreso = ?, 
-        fecha_reingreso = ?, 
-        nro_poliza = ?, 
-        nro_lote = ? 
+        imagen = ? 
       WHERE id = ?`,
-      [
-        codigo, nombre, descripcion, nro_motor, nro_chasis, categoria, 
-        sucursal, precio_compra, credito, precio_venta, stock_existencia, 
-        stock_minimo, fecha_ingreso, fecha_reingreso, nro_poliza, nro_lote, id
-      ]
+      [nombre, descripcion, precio_venta, stock_existencia, imagen, id]
     );
 
-    res.json({ message: "Producto actualizado correctamente" });
+    // Registrar el ajuste en el historial
+    await connection.query(
+      `INSERT INTO historial_ajustes (codigo, nombre, descripcion, precio, stock, motivo) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [codigo, nombre, descripcion, precio_venta, stock_existencia, motivo]
+    );
+
+    await connection.commit(); // Confirmar la transacción
+    res.json({ message: "Producto y historial actualizados correctamente" });
   } catch (err) {
-    console.error("Error al actualizar producto:", err);
-    res.status(500).json({ message: "Error al actualizar el producto", error: err.message });
+    await connection.rollback(); // Revertir cambios en caso de error
+    console.error("Error al actualizar producto y historial:", err);
+    res
+      .status(500)
+      .json({ message: "Error al actualizar los datos", error: err.message });
+  } finally {
+    connection.release(); // Liberar conexión
   }
 });
 
+// Endpoint para cargar la imagen
+app.post("/api/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    console.log("No se ha recibido el archivo");
+    return res.status(400).send("No se ha cargado ninguna imagen");
+  }
 
+  console.log("Archivo recibido:", req.file);
+  console.log(
+    "Ruta donde se guardará:",
+    path.join(uploadsDir, req.file.filename)
+  );
 
-// DELETE: Eliminar producto por código
-app.delete("/api/inventario/:codigo", async (req, res) => {
+  res.status(200).json({
+    imageUrl: `/uploads/${req.file.filename}`,
+  });
+});
+
+// DELETE: Eliminar producto por id
+app.delete("/api/inventario/:id", async (req, res) => {
   try {
-    const { codigo } = req.params;
+    const { id } = req.params; // Usar el parámetro id
     const [result] = await req.db.query(
-      "DELETE FROM inventario WHERE codigo = ?",
-      [codigo]
+      "DELETE FROM inventario WHERE id = ?",
+      [id] // Usar id en la consulta SQL
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
-    
+
     res.json({ message: "Producto eliminado exitosamente" });
   } catch (err) {
     handleError(res, 500, "Error al eliminar producto", err);
   }
 });
+
+app.post("/api/inventario", async (req, res) => {
+  try {
+    const {
+      codigo,
+      imagen,
+      nombre,
+      descripcion,
+      numero_motor,
+      numero_chasis,
+      costo,
+      credito,
+      precio_venta,
+      stock_existencia,
+      stock_minimo,
+      fecha_ingreso,
+      fecha_reingreso,
+      numero_poliza,
+      numero_lote,
+      categoria_id, // ID de la categoría
+      sucursal_id, // ID de la sucursal
+      proveedor_id, // ID del proveedor
+    } = req.body;
+
+    // Validar los campos requeridos
+    if (!codigo || !nombre || !categoria_id || !sucursal_id || !proveedor_id) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Campos obligatorios faltantes: código, nombre, categoría, sucursal o proveedor.",
+        });
+    }
+
+    // Verificar si el producto ya existe
+    const [existingProduct] = await req.db.query(
+      "SELECT * FROM inventario WHERE codigo = ? OR numero_motor = ?",
+      [codigo, numero_motor]
+    );
+
+    if (existingProduct.length > 0) {
+      return res
+        .status(409)
+        .json({
+          message: "El producto con ese código o número de motor ya existe.",
+        });
+    }
+
+    // Insertar en la base de datos
+    const [result] = await req.db.query(
+      `INSERT INTO inventario 
+      (codigo, imagen, nombre, descripcion, numero_motor, numero_chasis, costo, credito, 
+      precio_venta, stock_existencia, stock_minimo, fecha_ingreso, fecha_reingreso, 
+      numero_poliza, numero_lote, categoria_id, sucursal_id, proveedor_id) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        codigo,
+        imagen,
+        nombre,
+        descripcion,
+        numero_motor,
+        numero_chasis,
+        costo,
+        credito,
+        precio_venta,
+        stock_existencia,
+        stock_minimo,
+        fecha_ingreso,
+        fecha_reingreso,
+        numero_poliza,
+        numero_lote,
+        categoria_id,
+        sucursal_id,
+        proveedor_id,
+      ]
+    );
+
+    res.status(201).json({
+      message: "Producto insertado exitosamente",
+      id: result.insertId,
+    });
+  } catch (err) {
+    console.error("Error en el servidor:", err);
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: err.message });
+  }
+});
+
+// mostrar historial:
+app.get("/api/historial_ajustes", async (req, res) => {
+  try {
+    const [results] = await pool.query("SELECT * FROM historial_ajustes");
+    res.json(results);
+  } catch (err) {
+    handleError(res, 500, "Error al obtener el historial", err);
+  }
+});
+
+// Obtener un historial específico por ID
+app.get("/api/historial_ajustes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [results] = await pool.query(
+      "SELECT * FROM historial_ajustes WHERE id = ?",
+      [id]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Historial no encontrado" });
+    }
+
+    res.json(results[0]);
+  } catch (err) {
+    handleError(res, 500, "Error al obtener historial", err);
+}
+}
+);
+
+
+
+
+
+
+/////////////sucursales////////////////////
+
+// APIS SUCURSALES
+app.route("/api/sucursal")
+  .get(async (req, res) => {
+    try {
+      const [results] = await req.db.query("SELECT * FROM sucursal");
+      res.json(results);
+    } catch (err) {
+      handleError(res, 500, "Error al obtener sucursales", err);
+    }
+  })
+  .post(async (req, res) => {
+    try {
+      const requiredFields = [
+        "codigo",
+        "nombre",
+        "pais",
+        "departamento",
+        "ciudad",
+        "estado",
+      ];
+      validateFields(req.body, requiredFields); // Validación de campos
+
+      const [result] = await req.db.query("INSERT INTO sucursal SET ?", [
+        req.body,
+      ]);
+
+      res.status(201).json({
+        message: "Sucursal creada",
+        id: result.insertId, // Retorna ID de la nueva sucursal
+      });
+    } catch (err) {
+      handleError(res, err.status || 500, err.message, err);
+    }
+  });
+
+// GET: Obtener sucursal por ID
+app.get("/api/sucursal/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [results] = await req.db.query(
+      "SELECT * FROM sucursal WHERE id = ?",
+      [id]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Sucursal no encontrada" });
+    }
+
+    res.json(results[0]);
+  } catch (err) {
+    handleError(res, 500, "Error al obtener sucursal", err);
+  }
+});
+
+// PUT: Actualizar sucursal por ID
+app.put("/api/sucursal/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { codigo, nombre, pais, departamento, ciudad, estado } = req.body;
+
+    // Verificar si la sucursal existe
+    const [rows] = await req.db.query("SELECT * FROM sucursal WHERE id = ?", [
+      id,
+    ]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Sucursal no encontrada" });
+    }
+
+    // Actualizar la sucursal
+    await req.db.query(
+      "UPDATE sucursal SET codigo = ?, nombre = ?, pais = ?, departamento = ?, ciudad = ?, estado = ? WHERE id = ?",
+      [codigo, nombre, pais, departamento, ciudad, estado, id]
+    );
+
+    res.json({ message: "Sucursal actualizada correctamente" });
+  } catch (err) {
+    console.error("Error al actualizar sucursal:", err);
+    res
+      .status(500)
+      .json({ message: "Error al actualizar la sucursal", error: err.message });
+  }
+});
+
+// DELETE: Eliminar sucursal por ID
+app.delete("/api/sucursal/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await req.db.query("DELETE FROM sucursal WHERE id = ?", [
+      id,
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Sucursal no encontrada" });
+    }
+
+    res.json({ message: "Sucursal eliminada exitosamente" });
+  } catch (err) {
+    handleError(res, 500, "Error al eliminar sucursal", err);
+  }
+});
+
+
+
+///categorias////
+//api categoria
+
+app.route("/api/categoria")
+  .get(async (req, res) => {
+    try {
+      const [results] = await req.db.query("SELECT * FROM categoria");
+      res.json(results);
+    } catch (err) {
+      handleError(res, 500, "Error al obtener categorias", err);
+    }
+  })
+  .post(async (req, res) => {
+    try {
+      const requiredFields = ["nombre", "descripcion", "estado"];
+      validateFields(req.body, requiredFields); // Validación de campos
+
+      const [result] = await req.db.query("INSERT INTO categoria SET ?", [
+        req.body,
+      ]);
+
+      res.status(201).json({
+        message: "Categoria creada",
+        id: result.insertId, // Retorna ID de la nueva categoria
+      });
+    } catch (err) {
+      handleError(res, err.status || 500, err.message, err);
+    }
+  });
+
+// GET: Obtener categoria por ID
+app.get("/api/categoria/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [results] = await req.db.query(
+      "SELECT * FROM categoria WHERE id = ?",
+      [id]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Categoria no encontrada" });
+    }
+
+    res.json(results[0]);
+  } catch (err) {
+    handleError(res, 500, "Error al obtener Categoria", err);
+  }
+});
+
+// PUT: Actualizar categoria por ID
+app.put("/api/categoria/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, descripcion, fecha_creacion, estado } = req.body;
+
+    // Verificar si la categoria existe
+    const [rows] = await req.db.query("SELECT * FROM categoria WHERE id = ?", [
+      id,
+    ]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Categoria no encontrada" });
+    }
+
+    // Actualizar la categoria
+    await req.db.query(
+      "UPDATE categoria SET nombre = ?, descripcion = ?, fecha_creacion = ?, estado = ? WHERE id = ?",
+      [nombre, descripcion, fecha_creacion, estado, id]
+    );
+
+    res.json({ message: "Categoria actualizada correctamente" });
+  } catch (err) {
+    console.error("Error al actualizar Categoria:", err);
+    res.status(500).json({
+      message: "Error al actualizar la categoria",
+      error: err.message,
+    });
+  }
+});
+
+// DELETE: Eliminar sucursal por ID
+app.delete("/api/categoria/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await req.db.query("DELETE FROM categoria WHERE id = ?", [
+      id,
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "categoria no encontrada" });
+    }
+
+    res.json({ message: "Categoria eliminada exitosamente" });
+  } catch (err) {
+    handleError(res, 500, "Error al eliminar categoria", err);
+  }
+});
+
+//////proveedores////
+//APIS PROVEEDORES
+// GET: Obtener todos los proveedores
+app.get("/api/proveedores", async (req, res) => {
+  try {
+    const [results] = await req.db.query("SELECT * FROM proveedores");
+    res.json(results); // Devuelve la lista de proveedores
+  } catch (err) {
+    handleError(res, 500, "Error al obtener proveedores", err);
+  }
+});
+
+// POST: Crear nuevo proveedor
+app.post("/api/proveedores", async (req, res) => {
+  try {
+
+    const {
+      nombre,
+      direccion,
+      contacto,
+      correo,
+      clasificacion,
+      tipo_persona,
+      numero_factura_compra,
+      ley_tributaria,
+    } = req.body;
+
+    // Validar los campos requeridos
+    validateFields(req.body, [
+      "nombre",
+      "direccion",
+      "contacto",
+      "correo",
+      "clasificacion",
+      "tipo_persona",
+      "numero_factura_compra",
+      "ley_tributaria",
+    ]);
+
+    // Insertar en la base de datos
+    const [result] = await req.db.query(
+      "INSERT INTO proveedores (nombre, direccion, contacto, correo, clasificacion, tipo_persona, numero_factura_compra, ley_tributaria) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        nombre,
+        direccion,
+        contacto,
+        correo,
+        clasificacion,
+        tipo_persona,
+        numero_factura_compra,
+        ley_tributaria,
+      ]
+    );
+
+    res.status(201).json({
+      message: "Proveedor creado exitosamente",
+      id: result.insertId,
+    });
+  } catch (err) {
+    console.error("Error en el servidor:", err); // Imprimir el error en la consola
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: err.message });
+  }
+});
+
+// ACTUALIZAR PROVEEDORES
+app.put("/api/proveedores/:id", async (req, res) => {
+  const { id } = req.params;
+  const {
+    nombre,
+    direccion,
+    contacto,
+    correo,
+    clasificacion,
+    tipo_persona,
+    numero_factura_compra,
+    ley_tributaria,
+  } = req.body;
+
+  try {
+    await req.db.query(
+      `UPDATE proveedores SET 
+        nombre = ?, 
+        direccion = ?, 
+        contacto = ?, 
+        correo = ?, 
+        clasificacion = ?, 
+        tipo_persona = ?, 
+        numero_factura_compra = ?, 
+        ley_tributaria = ? 
+      WHERE id = ?`,
+      [
+        nombre,
+        direccion,
+        contacto,
+        correo,
+        clasificacion,
+        tipo_persona,
+        numero_factura_compra,
+        ley_tributaria,
+        id,
+      ]
+    );
+
+    res.json({ message: "Proveedor actualizado correctamente" });
+  } catch (err) {
+    console.error("Error al actualizar proveedor:", err);
+    res.status(500).json({
+      message: "Error al actualizar el proveedor",
+      error: err.message,
+    });
+  }
+});
+
+// Obtener proveedor por ID
+app.get("/api/proveedores/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [proveedor] = await req.db.query(
+      "SELECT * FROM proveedores WHERE id = ?",
+      [id]
+    );
+
+    if (!proveedor.length) {
+      return res.status(404).json({ message: "Proveedor no encontrado" });
+    }
+
+    res.json(proveedor[0]);
+  } catch (err) {
+    console.error("Error al obtener proveedor:", err);
+    res
+      .status(500)
+      .json({ message: "Error al obtener el proveedor", error: err.message });
+  }
+});
+
+// DELETE: Eliminar proveedor por ID
+app.delete("/api/proveedores/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await req.db.query(
+      "DELETE FROM proveedores WHERE id = ?",
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Proveedor no encontrado" });
+    }
+
+    res.json({ message: "Proveedor eliminado exitosamente" });
+  } catch (err) {
+    handleError(res, 500, "Error al eliminar proveedor", err);
+  }
+});
+
+
+
+////historial de ajustes////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ███████╗███████╗ ██████╗██╗   ██╗██████╗ 
 // ██╔════╝██╔════╝██╔════╝╚██╗ ██╔╝██╔══██╗
@@ -355,6 +933,24 @@ function handleError(res, status, message, error) {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////
+
+/////////////////////////////MOVIMIENTOS/////////////////////////
 /////////////////////////////MOVIMIENTOS/////////////////////////
 ////VENTAS AQUI EMPIEZAN DE MOVIMIENTOS/////////////////
 // AGREGAR UNA VENTA
@@ -439,7 +1035,7 @@ app.get('/api/ventas', async (req, res) => {
             'nombre', i.nombre,
             'cantidad', dv.cantidad,
             'precio', dv.precio_unitario,
-            'costo', i.precio_compra
+            'costo', i.costo
           )
         ) AS productos
       FROM ventas v
@@ -560,14 +1156,16 @@ app.get('/api/clientes', async (req, res) => {
   }
 });
 
+
 // Agregar un nuevo cliente
 app.post('/api/clientes', async (req, res) => {
   try {
-    const { nombre, direccion, dui, nit } = req.body;
+    const { nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente, representante_legal, direccion_representante, razon_social, email, telefono, fecha_inicio, fecha_fin, porcentaje_retencion } = req.body;
 
     const [result] = await req.db.query(
-      'INSERT INTO clientes (nombre, direccion, dui, nit) VALUES (?, ?, ?, ?)',
-      [nombre, direccion, dui, nit]
+      `INSERT INTO clientes (nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente, representante_legal, direccion_representante, razon_social, email, telefono, fecha_inicio, fecha_fin, porcentaje_retencion) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente, representante_legal, direccion_representante, razon_social, email, telefono, fecha_inicio, fecha_fin, porcentaje_retencion]
     );
 
     res.status(201).json({ message: "Cliente agregado correctamente", idCliente: result.insertId });
@@ -577,15 +1175,19 @@ app.post('/api/clientes', async (req, res) => {
   }
 });
 
+
 // Actualizar un cliente
 app.put('/api/clientes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, direccion, dui, nit } = req.body;
+    const { nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente, representante_legal, direccion_representante, razon_social, email, telefono, fecha_inicio, fecha_fin, porcentaje_retencion } = req.body;
 
     const [result] = await req.db.query(
-      'UPDATE clientes SET nombre = ?, direccion = ?, dui = ?, nit = ? WHERE idCliente = ?',
-      [nombre, direccion, dui, nit, id]
+      `UPDATE clientes SET 
+        nombre = ?, direccion = ?, dui = ?, nit = ?, tipo_cliente = ?, registro_contribuyente = ?, 
+        representante_legal = ?, direccion_representante = ?, razon_social = ?, email = ?, telefono = ?, 
+        fecha_inicio = ?, fecha_fin = ?, porcentaje_retencion = ? WHERE idCliente = ?`,
+      [nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente, representante_legal, direccion_representante, razon_social, email, telefono, fecha_inicio, fecha_fin, porcentaje_retencion, id]
     );
 
     if (result.affectedRows === 0) {
@@ -598,6 +1200,7 @@ app.put('/api/clientes/:id', async (req, res) => {
     res.status(500).json({ message: "Error al actualizar cliente", error: err.message });
   }
 });
+
 
 // Eliminar un cliente
 app.delete('/api/clientes/:id', async (req, res) => {

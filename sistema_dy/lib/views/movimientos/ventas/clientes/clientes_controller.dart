@@ -11,17 +11,37 @@ class ClientesController {
 
   Future<void> agregarCliente({
     required String nombre,
-    required String? direccion,
-    required String? dui,
-    required String? nit,
+    String? direccion,
+    String? dui,
+    String? nit,
+    required String tipoCliente,
+    String? registroContribuyente,
+    String? representanteLegal,
+    String? direccionRepresentante,
+    String? razonSocial,
+    required String email,
+    required String telefono,
+    String? fechaInicio,
+    String? fechaFin,
+    double? porcentajeRetencion,
     required BuildContext context,
   }) async {
     final cliente = Cliente(
-      idCliente: 0, // El ID se genera automáticamente en la base de datos
+      idCliente: 0,
       nombre: nombre,
       direccion: direccion,
       dui: dui,
       nit: nit,
+      tipoCliente: tipoCliente,
+      registroContribuyente: registroContribuyente,
+      representanteLegal: representanteLegal,
+      direccionRepresentante: direccionRepresentante,
+      razonSocial: razonSocial,
+      email: email,
+      telefono: telefono,
+      fechaInicio: fechaInicio,
+      fechaFin: fechaFin,
+      porcentajeRetencion: porcentajeRetencion,
     );
 
     try {
