@@ -723,28 +723,6 @@ app.delete("/api/proveedores/:id", async (req, res) => {
 
 
 
-////historial de ajustes////
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

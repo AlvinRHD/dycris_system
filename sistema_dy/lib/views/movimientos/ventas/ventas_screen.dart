@@ -156,7 +156,7 @@ class _VentasScreenState extends State<VentasScreen> {
                       _buildProductDetail(
                           'Cantidad:', producto['cantidad'].toString()),
                       _buildProductDetail('Costo Unitario:',
-                          '\$${producto['costo']?.toStringAsFixed(2)}'),
+                          '\$${producto['precio_venta']?.toStringAsFixed(2)}'),
                       _buildProductDetail('Precio Unitario:',
                           '\$${producto['precio']?.toStringAsFixed(2)}'),
                       _buildProductDetail('Subtotal:',
