@@ -213,7 +213,6 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
       String correo,
       String clasificacion,
       String tipoPersona,
-      String numFactura,
       String leyTributaria) async {
     final url = Uri.parse('http://localhost:3000/api/proveedores/$id');
     final Map<String, dynamic> body = {
@@ -223,7 +222,6 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
       'correo': correo,
       'clasificacion': clasificacion,
       'tipo_persona': tipoPersona,
-      'numero_factura_compra': numFactura,
       'ley_tributaria': leyTributaria,
     };
 
@@ -271,14 +269,13 @@ Future<void> _showEditProveedorDialog(Map<String, dynamic> proveedorData) async 
       TextEditingController(text: proveedorData['contacto'] ?? '');
   final TextEditingController correoController =
       TextEditingController(text: proveedorData['correo'] ?? '');
-  final TextEditingController numFacturaController =
-      TextEditingController(text: proveedorData['numero_factura_compra'] ?? '');
   final TextEditingController leyTributariaController =
       TextEditingController(text: proveedorData['ley_tributaria'] ?? '');
   final TextEditingController clasificacionController =
       TextEditingController(text: proveedorData['clasificacion'] ?? '');
 
   String tipoPersonaValue = proveedorData['tipo_persona'] ?? 'Natural';
+  String clasificacionValue = proveedorData['clasificacion'] ?? 'Microempresa';
 
   return showDialog<void>(
     context: context,
@@ -298,7 +295,6 @@ Future<void> _showEditProveedorDialog(Map<String, dynamic> proveedorData) async 
                   _buildTextField('Dirección', Icons.location_on, direccionController),
                   _buildTextField('Contacto', Icons.phone, contactoController),
                   _buildTextField('Correo', Icons.email, correoController),
-                  _buildTextField('Clasificación', Icons.category, clasificacionController),
                   _buildDropdown(
                     'Tipo de Persona',
                     Icons.person,
@@ -310,7 +306,17 @@ Future<void> _showEditProveedorDialog(Map<String, dynamic> proveedorData) async 
                       });
                     },
                   ),
-                  _buildTextField('Número de Factura de Compra', Icons.receipt, numFacturaController),
+                  _buildDropdown(
+                    'Clasificación',
+                    Icons.category,
+                    clasificacionValue,
+                    ['Microempresa', 'PequenaEmpresa', 'MedianaEmpresa', 'GranEmpresa'],
+                    (value) {
+                      setStateModal(() {
+                        clasificacionValue = value!;
+                      });
+                    },
+                  ),
                   _buildTextField('Ley Tributaria', Icons.gavel, leyTributariaController),
                 ],
               ),
@@ -333,7 +339,6 @@ Future<void> _showEditProveedorDialog(Map<String, dynamic> proveedorData) async 
                       contactoController.text.trim().isEmpty ||
                       correoController.text.trim().isEmpty ||
                       clasificacionController.text.trim().isEmpty ||
-                      numFacturaController.text.trim().isEmpty ||
                       leyTributariaController.text.trim().isEmpty) {
                     await _showAlertDialog(
                       'Error',
@@ -350,9 +355,8 @@ Future<void> _showEditProveedorDialog(Map<String, dynamic> proveedorData) async 
                     direccionController.text.trim(),
                     contactoController.text.trim(),
                     correoController.text.trim(),
-                    clasificacionController.text.trim(),
+                    clasificacionValue,
                     tipoPersonaValue,
-                    numFacturaController.text.trim(),
                     leyTributariaController.text.trim(),
                   );
 
@@ -373,6 +377,7 @@ Future<void> _showEditProveedorDialog(Map<String, dynamic> proveedorData) async 
     },
   );
 }
+
 
   /// Genera un campo de texto con icono.
   Widget _buildTextField(
@@ -571,10 +576,6 @@ Widget build(BuildContext context) {
                                 style:
                                     TextStyle(fontWeight: FontWeight.bold))),
                         DataColumn(
-                            label: Text('Factura Compra',
-                                style:
-                                    TextStyle(fontWeight: FontWeight.bold))),
-                        DataColumn(
                             label: Text('Ley Tributaria',
                                 style:
                                     TextStyle(fontWeight: FontWeight.bold))),
@@ -595,8 +596,6 @@ Widget build(BuildContext context) {
                                     Text(proveedor['clasificacion'] ?? '')),
                                 DataCell(
                                     Text(proveedor['tipo_persona'] ?? '')),
-                                DataCell(Text(
-                                    proveedor['numero_factura_compra'] ?? '')),
                                 DataCell(
                                     Text(proveedor['ley_tributaria'] ?? '')),
                                 DataCell(

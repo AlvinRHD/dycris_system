@@ -231,9 +231,11 @@ class _InventarioScreenState extends State<InventarioScreen> {
                                   DataCell(Text(inventario['nombre'] ?? '')),
                                   DataCell(
                                       Text(inventario['descripcion'] ?? '')),
-                                  DataCell(Text(inventario['costo'] ?? '')),
-                                  DataCell(
-                                      Text(inventario['precio_venta'] ?? '')),
+                                  DataCell(Text(
+                                      '\$${inventario['costo']?.toString() ?? '0'}')),
+
+                                   DataCell(Text(
+                                      '\$${inventario['precio_venta']?.toString() ?? '0'}')),
                                   DataCell(Text(inventario['stock_existencia']
                                       .toString())),
                                   DataCell(Text(

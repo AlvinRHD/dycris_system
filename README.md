@@ -7,66 +7,76 @@ Este proyecto es un **Sistema de Inventario** desarrollado en **Flutter** para e
 ## 📁 Estructura del Proyecto
 
 ```
-📁lib
-├── 📁routes
-│   ├── app_routes.dart
-├── 📁views
-│   ├── 📁categoria
-│   │   ├── lista_categoria.dart
-│   │   ├── registrar_categoria.dart
-│   ├── 📁inventario
-│   │   ├── historial_ajustes_screen.dart
-│   │   ├── inventario_completo.dart
-│   │   ├── inventario_screen.dart
-│   │   ├── registrar_productos.dart
-│   ├── 📁movimientos
-│   │   ├── compras_screen.dart
-│   │   ├── 📁ofertas
-│   │   ├── 📁traslados
-│   │   ├── 📁ventas
-│   │   ├── ventas_screen.dart
-│   ├── 📁proveedores
-│   │   ├── proveedores_screen.dart
-│   │   ├── registrar_proveedores_screen.dart
-│   ├── 📁sucursal
-│   │   ├── mostrar_sucursales.dart
-│   │   ├── registrar_sucursal.dart
-│   ├── home_screen.dart
-│   ├── login_screen.dart
-│   ├── registro_screen.dart
-└── main.dart
+└── 📁lib
+    └── 📁views
+        └── 📁categoria
+            └── lista_categoria.dart
+            └── registrar_categoria.dart
+        └── home_screen.dart
+        └── 📁inventario
+            └── historial_ajustes_screen.dart
+            └── inventario_completo.dart
+            └── inventario_screen.dart
+            └── product_model.dart
+            └── registrar_productos.dart
+        └── 📁modulo_empleados
+            └── editar_empleado_modal.dart
+            └── empleados_screen.dart
+            └── nuevo_empleado_modal.dart
+        └── 📁modulo_usuarios
+            └── agregar_usuario_modal.dart
+            └── login_screen.dart
+            └── user_screen.dart
+        └── 📁movimientos
+            └── compras_screen.dart
+            └── movimientos_screen.dart
+            └── 📁ofertas
+                └── agregar_oferta_screen.dart
+                └── editar_oferta_screen.dart
+                └── ofertas_api.dart
+                └── ofertas_screen.dart
+                └── ofertas_widgets.dart
+            └── salidas_screen.dart
+            └── 📁traslados
+                └── agregar_traslado_screen.dart
+                └── editar_traslado_screen.dart
+                └── traslados_api.dart
+                └── traslados_screen.dart
+                └── traslados_widgets.dart
+            └── 📁ventas
+                └── agregar_venta_screen.dart
+                └── auth_helper.dart
+                └── 📁clientes
+                    └── agregar_cliente_screen.dart
+                    └── cliente_widgets.dart
+                    └── clientes_api.dart
+                    └── clientes_screen.dart
+                    └── editar_cliente_screen.dart
+                └── editar_venta_screen.dart
+                └── venta_api.dart
+                └── venta_widgets.dart
+                └── ventas_screen.dart
+        └── 📁proveedores
+            └── proveedores_screen.dart
+            └── registrar_proveedores_screen.dart
+        └── splash_screen.dart
+        └── 📁sucursal
+            └── mostrar_sucursales.dart
+            └── registrar_sucursal.dart
+    └── main.dart
 ```
 
 ## 🚀 Funcionalidades
 
 ### 1️⃣ **Módulo de Categorías** (`views/categoria`)
 
-- `lista_categoria.dart`: Muestra la lista de categorías en una tabla con opciones para editar y eliminar.
-- `registrar_categoria.dart`: Formulario para agregar nuevas categorías.
-
 ### 2️⃣ **Módulo de Inventario** (`views/inventario`)
-
-- `inventario_screen.dart`: Pantalla principal del inventario con listado de productos.
-- `registrar_productos.dart`: Formulario para agregar productos nuevos.
-- `historial_ajustes_screen.dart`: Historial de modificaciones en productos.
 
 ### 3️⃣ **Módulo de Movimientos** (`views/movimientos`)
 
-- `compras_screen.dart`: Manejo de compras de productos.
-- `ventas_screen.dart`: Gestión de ventas con búsqueda de clientes y descuentos automáticos.
-- `salidas_screen.dart`: Registro de salidas de productos.
-- `ofertas_screen.dart`: Administración de descuentos en productos.
-- `traslados_screen.dart`: Gestión de traslados entre sucursales.
-
 ### 4️⃣ **Módulo de Proveedores** (`views/proveedores`)
 
-- `proveedores_screen.dart`: Lista de proveedores registrados.
-- `registrar_proveedores_screen.dart`: Formulario para añadir proveedores.
-
 ### 5️⃣ **Módulo de Sucursales** (`views/sucursal`)
-
-- `mostrar_sucursales.dart`: Lista de sucursales registradas.
-- `registrar_sucursal.dart`: Formulario para agregar nuevas sucursales.
 
 ## 📌 Características Principales del CRUD
 
@@ -125,7 +135,6 @@ Future<List<dynamic>> fetchCategorias() async {
 ## 📌 Mejoras Futuras
 
 ✅ Mejor manejo de errores y validaciones.  
-✅ Optimización en la carga de datos con `Provider` o `Riverpod`.  
 ✅ Implementación de autenticación y roles de usuario.  
 ✅ Uso de variables de entorno en Flutter para la API.
 

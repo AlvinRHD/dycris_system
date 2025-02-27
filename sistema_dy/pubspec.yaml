@@ -38,7 +38,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.3.0
   shared_preferences: ^2.5.1
+  provider: ^6.1.2
+  jwt_decoder: ^2.0.1
   intl: ^0.20.2
+  logger: ^2.5.0
+  pdf: ^3.11.3
 
 dev_dependencies:
   flutter_test:
@@ -56,6 +60,11 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/logos/logoEmpresa.jpg
+    - assets/logos/logo1.jpg
+    - assets/logos/logo2.jpg
+    - assets/logos/logo3.jpg
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

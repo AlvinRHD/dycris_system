@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'views/home_screen.dart';
-import 'views/login/login_screen.dart';
+import 'views/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,14 +15,11 @@ class MyApp extends StatelessWidget {
       title: 'Sistema de Inventario',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Color(0xFF2A2D3E), // Color del cursor
+        ),
       ),
-      initialRoute: '/login', // Ruta inicial apuntando a login
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const DashboardScreen(
-              userData: {},
-            ),
-      },
+      home: const SplashScreen(),
     );
   }
 }

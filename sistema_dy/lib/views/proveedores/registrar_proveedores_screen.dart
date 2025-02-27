@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import 'dart:convert';
-//comment
+
 class RegistroProveedorScreen extends StatefulWidget {
   const RegistroProveedorScreen({super.key});
 
@@ -13,6 +12,13 @@ class RegistroProveedorScreen extends StatefulWidget {
 
 enum TipoPersona { Natural, Juridica }
 
+enum ClasificacionEmpresa {
+  Microempresa,
+  PequenaEmpresa,
+  MedianaEmpresa,
+  GranEmpresa
+}
+
 class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nombreController = TextEditingController();
@@ -21,12 +27,11 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
   final TextEditingController _correoController = TextEditingController();
   final TextEditingController _clasificacionController =
       TextEditingController();
-  final TextEditingController _numeroFacturaController =
-      TextEditingController();
   final TextEditingController _leyTributariaController =
       TextEditingController();
 
   TipoPersona? _selectedTipoPersona;
+  ClasificacionEmpresa? _selectedClasificacion;
 
   Future<void> _registrarProveedor() async {
     if (_formKey.currentState?.validate() ?? false) {
@@ -35,9 +40,8 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
       final contacto = _contactoController.text;
       final correo = _correoController.text;
       final tipoPersonaSeleccionada =
-          _selectedTipoPersona == TipoPersona.Natural ? 'Natural' : 'Jurídica';
-      final clasificacion = _clasificacionController.text;
-      final numeroFactura = _numeroFacturaController.text;
+          _selectedTipoPersona == TipoPersona.Natural ? 'Natural' : 'Juridica';
+      final clasificacion = _selectedClasificacion.toString().split('.').last;
       final leyTributaria = _leyTributariaController.text;
 
       final response = await http.post(
@@ -50,7 +54,6 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
           'correo': correo,
           'clasificacion': clasificacion,
           'tipo_persona': tipoPersonaSeleccionada,
-          'numero_factura_compra': numeroFactura,
           'ley_tributaria': leyTributaria,
         }),
       );
@@ -59,7 +62,6 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Proveedor registrado correctamente')),
         );
-
         Navigator.pop(context, true);
       } else {
         final errorData = json.decode(response.body);
@@ -81,7 +83,6 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
     _contactoController.dispose();
     _correoController.dispose();
     _clasificacionController.dispose();
-    _numeroFacturaController.dispose();
     _leyTributariaController.dispose();
     super.dispose();
   }
@@ -153,16 +154,6 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
                                   keyboardType: TextInputType.emailAddress,
                                 ),
                                 _buildTextField(
-                                  controller: _clasificacionController,
-                                  label: 'Clasificación',
-                                  icon: Icons.category,
-                                ),
-                                _buildTextField(
-                                  controller: _numeroFacturaController,
-                                  label: 'Número de Factura',
-                                  icon: Icons.receipt,
-                                ),
-                                _buildTextField(
                                   controller: _leyTributariaController,
                                   label: 'Ley Tributaria',
                                   icon: Icons.gavel,
@@ -196,6 +187,42 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
                                   validator: (value) {
                                     if (value == null) {
                                       return 'Por favor seleccione un tipo de persona';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                DropdownButtonFormField<ClasificacionEmpresa>(
+                                  value: _selectedClasificacion,
+                                  decoration: InputDecoration(
+                                    labelText: 'Clasificación',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    prefixIcon: const Icon(Icons.category),
+                                  ),
+                                  items: ClasificacionEmpresa.values.map(
+                                      (ClasificacionEmpresa clasificacion) {
+                                    return DropdownMenuItem<
+                                        ClasificacionEmpresa>(
+                                      value: clasificacion,
+                                      child: Text(clasificacion
+                                          .toString()
+                                          .split('.')
+                                          .last
+                                          .replaceAllMapped(RegExp(r'([A-Z])'),
+                                              (match) => ' ${match.group(0)}')
+                                          .toUpperCase()),
+                                    );
+                                  }).toList(),
+                                  onChanged: (ClasificacionEmpresa? newValue) {
+                                    setState(() {
+                                      _selectedClasificacion = newValue;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null) {
+                                      return 'Por favor seleccione una clasificación';
                                     }
                                     return null;
                                   },

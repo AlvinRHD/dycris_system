@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'clientes_controller.dart';
-import 'clientes_model.dart';
-import 'agregar_cliente_modal.dart'; // Importa el modal para agregar clientes
+import 'package:intl/intl.dart';
+import 'agregar_cliente_screen.dart';
+import 'cliente_widgets.dart';
+import 'editar_cliente_screen.dart';
+import 'clientes_api.dart';
 
 class ClientesScreen extends StatefulWidget {
   @override
@@ -9,337 +11,326 @@ class ClientesScreen extends StatefulWidget {
 }
 
 class _ClientesScreenState extends State<ClientesScreen> {
-  final ClientesController _clientesController = ClientesController();
-  List<Cliente> _clientes = [];
+  List<dynamic> _clientes = [];
+  List<dynamic> _filteredClientes = [];
+  final TextEditingController _searchController = TextEditingController();
+  bool _mostrarTodosLosCampos = false;
+  int _page = 1;
+  int _limit = 10;
+  int _total = 0;
 
   @override
   void initState() {
     super.initState();
     _cargarClientes();
+    _searchController.addListener(_filtrarClientes);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarClientes() async {
     try {
-      final clientes = await _clientesController.obtenerClientes();
+      final response =
+          await ClientesApi().getClientes(page: _page, limit: _limit);
       setState(() {
-        _clientes = clientes
-            .map((cliente) => Cliente(
-                  idCliente: cliente.idCliente,
-                  nombre: cliente.nombre,
-                  direccion: cliente.direccion,
-                  dui: cliente.dui,
-                  nit: cliente.nit,
-                  tipoCliente: cliente.tipoCliente,
-                  registroContribuyente: cliente.registroContribuyente,
-                  representanteLegal: cliente.representanteLegal,
-                  direccionRepresentante: cliente.direccionRepresentante,
-                  razonSocial: cliente.razonSocial,
-                  email: cliente.email,
-                  telefono: cliente.telefono,
-                  fechaInicio: cliente.fechaInicio,
-                  fechaFin: cliente.fechaFin,
-                  porcentajeRetencion: cliente.porcentajeRetencion,
-                ))
-            .toList();
+        _clientes = response['clientes'];
+        _filteredClientes = List.from(_clientes);
+        _total = response['total'];
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar clientes: $e')),
-      );
+          SnackBar(content: Text('Error al cargar clientes: $e')));
     }
   }
 
-  void _mostrarModalAgregarCliente() {
-    showDialog(
-      context: context,
-      builder: (context) => AgregarClienteModal(
-        onClienteAgregado: () {
-          _cargarClientes();
-        },
-      ),
-    );
+  void _filtrarClientes() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredClientes = _clientes.where((cliente) {
+        return (cliente['nombre']?.toLowerCase().contains(query) ?? false) ||
+            (cliente['dui']?.toLowerCase().contains(query) ?? false) ||
+            (cliente['telefono']?.toLowerCase().contains(query) ?? false) ||
+            (cliente['codigo_cliente']?.toLowerCase().contains(query) ?? false);
+      }).toList();
+    });
   }
 
-  void _editarCliente(Cliente cliente) {
-    TextEditingController nombreController =
-        TextEditingController(text: cliente.nombre);
-    TextEditingController direccionController =
-        TextEditingController(text: cliente.direccion ?? '');
-    TextEditingController duiController =
-        TextEditingController(text: cliente.dui ?? '');
-    TextEditingController nitController =
-        TextEditingController(text: cliente.nit ?? '');
-    TextEditingController tipoClienteController =
-        TextEditingController(text: cliente.tipoCliente);
-    TextEditingController registroContribuyenteController =
-        TextEditingController(text: cliente.registroContribuyente ?? '');
-    TextEditingController representanteLegalController =
-        TextEditingController(text: cliente.representanteLegal ?? '');
-    TextEditingController direccionRepresentanteController =
-        TextEditingController(text: cliente.direccionRepresentante ?? '');
-    TextEditingController razonSocialController =
-        TextEditingController(text: cliente.razonSocial ?? '');
-    TextEditingController emailController =
-        TextEditingController(text: cliente.email);
-    TextEditingController telefonoController =
-        TextEditingController(text: cliente.telefono);
-    TextEditingController fechaInicioController =
-        TextEditingController(text: cliente.fechaInicio ?? '');
-    TextEditingController fechaFinController =
-        TextEditingController(text: cliente.fechaFin ?? '');
-    TextEditingController porcentajeRetencionController = TextEditingController(
-        text: cliente.porcentajeRetencion?.toString() ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Editar Cliente'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                    controller: nombreController,
-                    decoration: InputDecoration(labelText: 'Nombre')),
-                TextField(
-                    controller: direccionController,
-                    decoration: InputDecoration(labelText: 'Dirección')),
-                TextField(
-                    controller: duiController,
-                    decoration: InputDecoration(labelText: 'DUI')),
-                TextField(
-                    controller: nitController,
-                    decoration: InputDecoration(labelText: 'NIT')),
-                TextField(
-                    controller: tipoClienteController,
-                    decoration: InputDecoration(labelText: 'Tipo Cliente')),
-                TextField(
-                    controller: registroContribuyenteController,
-                    decoration:
-                        InputDecoration(labelText: 'Registro Contribuyente')),
-                TextField(
-                    controller: representanteLegalController,
-                    decoration:
-                        InputDecoration(labelText: 'Representante Legal')),
-                TextField(
-                    controller: direccionRepresentanteController,
-                    decoration:
-                        InputDecoration(labelText: 'Dirección Representante')),
-                TextField(
-                    controller: razonSocialController,
-                    decoration: InputDecoration(labelText: 'Razón Social')),
-                TextField(
-                    controller: emailController,
-                    decoration: InputDecoration(labelText: 'Email')),
-                TextField(
-                    controller: telefonoController,
-                    decoration: InputDecoration(labelText: 'Teléfono')),
-                TextField(
-                    controller: fechaInicioController,
-                    decoration: InputDecoration(labelText: 'Fecha Inicio')),
-                TextField(
-                    controller: fechaFinController,
-                    decoration: InputDecoration(labelText: 'Fecha Fin')),
-                TextField(
-                    controller: porcentajeRetencionController,
-                    decoration:
-                        InputDecoration(labelText: 'Porcentaje Retención')),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                Cliente clienteActualizado = Cliente(
-                  idCliente: cliente.idCliente,
-                  nombre: nombreController.text,
-                  direccion: direccionController.text,
-                  dui: duiController.text,
-                  nit: nitController.text,
-                  tipoCliente: tipoClienteController.text,
-                  registroContribuyente: registroContribuyenteController.text,
-                  representanteLegal: representanteLegalController.text,
-                  direccionRepresentante: direccionRepresentanteController.text,
-                  razonSocial: razonSocialController.text,
-                  email: emailController.text,
-                  telefono: telefonoController.text,
-                  fechaInicio: fechaInicioController.text,
-                  fechaFin: fechaFinController.text,
-                  porcentajeRetencion:
-                      double.tryParse(porcentajeRetencionController.text),
-                );
-                await _clientesController.actualizarCliente(
-                    clienteActualizado, context);
-                Navigator.pop(context);
-                _cargarClientes();
-              },
-              child: Text('Guardar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar'),
-            ),
-          ],
-        );
-      },
+  void _editarCliente(Map<String, dynamic> cliente) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => EditarClienteScreen(cliente: cliente)),
     );
+    if (result == true) {
+      _cargarClientes();
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cliente actualizado correctamente')));
+    }
   }
 
-  void _eliminarCliente(int idCliente) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Eliminar Cliente'),
-          content: Text('¿Estás seguro de que quieres eliminar este cliente?'),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                await _clientesController.eliminarCliente(idCliente, context);
-                Navigator.pop(context);
-                _cargarClientes();
-              },
-              child: Text('Eliminar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar'),
-            ),
-          ],
-        );
-      },
-    );
+  void _eliminarCliente(int id) async {
+    try {
+      await ClientesApi().deleteCliente(id);
+      _cargarClientes();
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cliente eliminado correctamente')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al eliminar cliente: $e')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Fondo gris claro
       appBar: AppBar(
-        backgroundColor: Colors.white, // AppBar blanco
-        elevation: 0, // Sin elevación
-        title: Text(
-          'Clientes', // Título 'Clientes'
-          style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold), // Título en negro y negrita
-        ),
+        title: Text('Clientes', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: ElevatedButton.icon(
-              onPressed: _mostrarModalAgregarCliente,
-              icon: Icon(Icons.add, color: Colors.white),
-              label:
-                  Text("Nuevo Cliente", style: TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue, // Botón azul
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12), // Bordes redondeados
-                ),
-              ),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => AgregarClienteScreen()),
+                );
+                if (result == true) _cargarClientes();
+              },
+              icon: Icon(Icons.add),
+              label: Text("Nuevo Cliente"),
             ),
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white, // Contenedor blanco para la tabla
-            borderRadius: BorderRadius.circular(12), // Bordes redondeados
-            boxShadow: [
-              BoxShadow(color: Colors.black12, blurRadius: 6), // Sombra sutil
-            ],
-          ),
-          child: _clientes.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Text(
-                      'No hay clientes disponibles', // Mensaje si no hay clientes
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar clientes...',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                )
-              : SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          'Lista de Clientes', // Subtítulo para la tabla
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18),
-                        ),
-                      ),
-                      DataTable(
-                        columnSpacing: 12,
-                        headingRowColor: MaterialStateColor.resolveWith(
-                            (states) => Colors.grey[200]!),
-                        columns: const [
-                          DataColumn(
-                              label: Text('ID',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Nombre',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Teléfono',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Email',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Tipo Cliente',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Razón Social',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Acciones',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                        ],
-                        rows: _clientes.map((cliente) {
-                          return DataRow(cells: [
-                            DataCell(Text(cliente.idCliente.toString())),
-                            DataCell(Text(cliente.nombre)),
-                            DataCell(Text(cliente.telefono)),
-                            DataCell(Text(cliente.email)),
-                            DataCell(Text(cliente.tipoCliente)),
-                            DataCell(Text(cliente.razonSocial ?? 'N/A')),
-                            DataCell(
-                              Row(
-                                children: [
-                                  IconButton(
-                                      icon:
-                                          Icon(Icons.edit, color: Colors.blue),
-                                      onPressed: () => _editarCliente(cliente)),
-                                  IconButton(
-                                      icon:
-                                          Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () =>
-                                          _eliminarCliente(cliente.idCliente)),
-                                ],
-                              ),
-                            ),
-                          ]);
+                ),
+                SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () => setState(
+                      () => _mostrarTodosLosCampos = !_mostrarTodosLosCampos),
+                  child: Text(_mostrarTodosLosCampos
+                      ? "Ocultar Campos"
+                      : "Mostrar Todos"),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Expanded(
+              child: _filteredClientes.isEmpty
+                  ? Center(child: Text("No hay clientes disponibles"))
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: _mostrarTodosLosCampos
+                            ? [
+                                DataColumn(label: Text('Código')),
+                                DataColumn(label: Text('Nombre')),
+                                DataColumn(label: Text('DUI')),
+                                DataColumn(label: Text('NIT')),
+                                DataColumn(label: Text('Tipo')),
+                                DataColumn(label: Text('Dirección')),
+                                DataColumn(label: Text('Teléfono')),
+                                DataColumn(label: Text('Email')),
+                                DataColumn(label: Text('Reg. Contribuyente')),
+                                DataColumn(label: Text('Rep. Legal')),
+                                DataColumn(label: Text('Dir. Rep.')),
+                                DataColumn(label: Text('Razón Social')),
+                                DataColumn(label: Text('Fecha Inicio')),
+                                DataColumn(label: Text('Fecha Fin')),
+                                DataColumn(label: Text('% Retención')),
+                                DataColumn(label: Text('Acciones')),
+                              ]
+                            : [
+                                DataColumn(label: Text('Código')),
+                                DataColumn(label: Text('Nombre')),
+                                DataColumn(label: Text('DUI')),
+                                DataColumn(label: Text('Teléfono')),
+                                DataColumn(label: Text('Acciones')),
+                              ],
+                        rows: _filteredClientes.map((cliente) {
+                          final porcentajeRetencion =
+                              cliente['porcentaje_retencion'] != null
+                                  ? double.tryParse(
+                                          cliente['porcentaje_retencion']
+                                              .toString())
+                                      ?.toStringAsFixed(2)
+                                  : 'N/A';
+                          return DataRow(
+                            cells: _mostrarTodosLosCampos
+                                ? [
+                                    DataCell(Text(
+                                        cliente['codigo_cliente']?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(
+                                        cliente['nombre']?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(
+                                        cliente['dui']?.toString() ?? 'N/A')),
+                                    DataCell(Text(
+                                        cliente['nit']?.toString() ?? 'N/A')),
+                                    DataCell(Text(
+                                        cliente['tipo_cliente']?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(
+                                        cliente['direccion']?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(
+                                        cliente['telefono']?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(
+                                        cliente['email']?.toString() ?? 'N/A')),
+                                    DataCell(Text(
+                                        cliente['registro_contribuyente']
+                                                ?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(cliente['representante_legal']
+                                            ?.toString() ??
+                                        'N/A')),
+                                    DataCell(Text(
+                                        cliente['direccion_representante']
+                                                ?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(
+                                        cliente['razon_social']?.toString() ??
+                                            'N/A')),
+                                    DataCell(cliente['fecha_inicio'] != null
+                                        ? Text(DateFormat('dd/MM/yyyy').format(
+                                            DateTime.parse(
+                                                cliente['fecha_inicio'])))
+                                        : Text('N/A')),
+                                    DataCell(cliente['fecha_fin'] != null
+                                        ? Text(DateFormat('dd/MM/yyyy').format(
+                                            DateTime.parse(
+                                                cliente['fecha_fin'])))
+                                        : Text('N/A')),
+                                    DataCell(Text(porcentajeRetencion!)),
+                                    DataCell(
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(Icons.history),
+                                            onPressed: () => showDialog(
+                                              context: context,
+                                              builder: (_) =>
+                                                  HistorialCambiosClientesDialog(
+                                                clienteId: cliente['idCliente'],
+                                                clienteNombre:
+                                                    cliente['nombre'],
+                                              ),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.edit,
+                                                color: Colors.blue),
+                                            onPressed: () =>
+                                                _editarCliente(cliente),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.delete,
+                                                color: Colors.red),
+                                            onPressed: () => _eliminarCliente(
+                                                cliente['idCliente']),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ]
+                                : [
+                                    DataCell(Text(
+                                        cliente['codigo_cliente']?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(
+                                        cliente['nombre']?.toString() ??
+                                            'N/A')),
+                                    DataCell(Text(
+                                        cliente['dui']?.toString() ?? 'N/A')),
+                                    DataCell(Text(
+                                        cliente['telefono']?.toString() ??
+                                            'N/A')),
+                                    DataCell(
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(Icons.history),
+                                            onPressed: () => showDialog(
+                                              context: context,
+                                              builder: (_) =>
+                                                  HistorialCambiosClientesDialog(
+                                                clienteId: cliente['idCliente'],
+                                                clienteNombre:
+                                                    cliente['nombre'],
+                                              ),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.edit,
+                                                color: Colors.blue),
+                                            onPressed: () =>
+                                                _editarCliente(cliente),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.delete,
+                                                color: Colors.red),
+                                            onPressed: () => _eliminarCliente(
+                                                cliente['idCliente']),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                          );
                         }).toList(),
                       ),
-                    ],
-                  ),
+                    ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: _page > 1
+                      ? () => setState(() {
+                            _page--;
+                            _cargarClientes();
+                          })
+                      : null,
+                  child: Text("Anterior"),
                 ),
+                SizedBox(width: 20),
+                Text("Página $_page de ${(_total / _limit).ceil()}"),
+                SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed: _page < (_total / _limit).ceil()
+                      ? () => setState(() {
+                            _page++;
+                            _cargarClientes();
+                          })
+                      : null,
+                  child: Text("Siguiente"),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

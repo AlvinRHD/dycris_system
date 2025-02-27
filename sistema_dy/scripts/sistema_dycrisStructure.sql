@@ -2,7 +2,6 @@
 CREATE DATABASE IF NOT EXISTS `sistema_dycris`;
 USE `sistema_dycris`;
 
-
 -- Tabla Inventario
 CREATE TABLE inventario (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -28,34 +27,11 @@ CREATE TABLE inventario (
     FOREIGN KEY (sucursal_id) REFERENCES sucursal(id) ON DELETE CASCADE,
     FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE CASCADE
 );
-INSERT INTO inventario (
-    codigo, imagen, nombre, descripcion, numero_motor, numero_chasis, categoria_id, sucursal_id, costo, credito, precio_venta, stock_existencia, stock_minimo, fecha_ingreso, fecha_reingreso, numero_poliza, numero_lote, proveedor_id
-) VALUES
-    ('INV001', 'imagen1.jpg', 'Laptop Dell', 'Laptop de 15 pulgadas con procesador Intel Core i5', '1234567890', 'ABCDEFGHIJKLM', 1, 1, 1000.00, 200.00, 1200.00, 50, 10, '2023-10-27', NULL, 'POLIZA123', 'LOTE456', 1);
-
-
-
-
--- Tabla Usuarios (versión original con rol ENUM)
-CREATE TABLE `usuarios` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `nombre_completo` varchar(255) NOT NULL,
-  `usuario` varchar(50) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `rol` enum('Admin','Caja','Asesor de Venta') NOT NULL,
-  `fecha_creacion` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `fecha_actualizacion` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-);
-
-INSERT INTO usuarios (`nombre_completo`, `usuario`, `password`, `rol`,  `fecha_creacion`, `fecha_actualizacion`) 
-VALUES ('Alvin Rosales', 'admin', 4444, 'Admin', DATE(NOW()),DATE(NOW()));
-
 
 
 -- Tabla Sucursal
 CREATE TABLE sucursal (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    idproveedores INT AUTO_INCREMENT PRIMARY KEY,
     codigo VARCHAR(50) UNIQUE NOT NULL,
     nombre VARCHAR(50) NOT NULL,
     pais VARCHAR(50) NOT NULL,
@@ -63,9 +39,8 @@ CREATE TABLE sucursal (
     ciudad VARCHAR(50) NOT NULL,
     estado ENUM('Activo', 'Inactivo') NOT NULL DEFAULT 'Activo'
 );
-INSERT INTO sucursal (codigo, nombre, pais, departamento, ciudad, estado) VALUES
-    ('S001', 'Sucursal Principal', 'Colombia', 'Bogotá', 'Bogotá', 'Activo');
-
+select * from proveedores;
+SELECT codigo, nombre FROM sucursal WHERE estado = 'Activo';
 
 
 -- Tabla Categoría
@@ -76,10 +51,6 @@ CREATE TABLE categoria (
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     estado ENUM('Activo', 'Inactivo') NOT NULL DEFAULT 'Activo'
 );
-INSERT INTO categoria (nombre, descripcion, estado) VALUES
-    ('Tecnología', 'Productos electrónicos, computadores, etc.', 'Activo');
-
-
 
 -- Tabla Proveedores
 CREATE TABLE proveedores (
@@ -93,11 +64,6 @@ CREATE TABLE proveedores (
     numero_factura_compra VARCHAR(50),
     ley_tributaria TEXT
 );
-INSERT INTO proveedores (nombre, direccion, contacto, correo, clasificacion, tipo_persona, numero_factura_compra, ley_tributaria) VALUES
-    ('Proveedor A', 'Calle 123, Ciudad A', '1234567890', 'proveedorA@example.com', 'Mayorista', 'Jurídica', '1234567890', 'Ley Tributaria 123');
-
-
-
 
 
 
@@ -114,13 +80,6 @@ CREATE TABLE historial_ajustes (
   stock int(20) NOT NULL,
   motivo text NOT NULL
 );
-INSERT INTO historial_ajustes (codigo, nombre, descripcion, precio, fecha, stock, motivo)
-VALUES ('885', 'hhyyh', 'gg', 24, CURDATE(), 6567, 'gg');
-
-
-
-
-
 
 
 
@@ -144,7 +103,29 @@ CREATE TABLE `clientes` (
   PRIMARY KEY (`idCliente`)
 );
 
--- Tabla Ventas
+-- Modificar la tabla clientes para agregar el campo codigo_cliente
+ALTER TABLE `clientes`
+ADD COLUMN `codigo_cliente` VARCHAR(50);
+
+
+
+select * from clientes;
+
+-- historial de cambios para la tabla de clientes
+CREATE TABLE `historial_cambios_clientes` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `cliente_id` INT NOT NULL,
+  `fecha_cambio` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `datos_anteriores` JSON NOT NULL, -- Estado anterior del cliente
+  `datos_nuevos` JSON NOT NULL, -- Estado nuevo después del cambio
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`cliente_id`) REFERENCES `clientes`(`idCliente`) ON DELETE CASCADE
+);
+
+
+
+/**
+-- Tabla Ventas -- anterior
 CREATE TABLE `ventas` (
   `idVentas` int NOT NULL AUTO_INCREMENT,
   `fecha_venta` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -156,38 +137,139 @@ CREATE TABLE `ventas` (
   PRIMARY KEY (`idVentas`),
   FOREIGN KEY (`cliente_id`) REFERENCES `clientes`(`idCliente`)
 );
+**/
+
+
+
+select * from ventas;
+-- Modificar la tabla Ventas
+DROP TABLE IF EXISTS `ventas`; -- Eliminar la tabla anterior para recrearla con los cambios
+CREATE TABLE `ventas` (
+  `idVentas` int NOT NULL AUTO_INCREMENT,
+  `codigo_venta` VARCHAR(50) UNIQUE NOT NULL, -- Nuevo campo para el código de venta
+  `fecha_venta` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `cliente_id` int DEFAULT NULL,
+  `empleado_id` int NOT NULL, -- Nueva relación con empleados
+  `tipo_factura` ENUM('Consumidor Final', 'Crédito Fiscal', 'Ticket') NOT NULL,
+  `metodo_pago` ENUM('Efectivo', 'Tarjeta de Crédito', 'Transferencia Bancaria') NOT NULL,
+  `total` DECIMAL(10,2) NOT NULL,
+  `descripcion_compra` TEXT,
+  -- Campos adicionales para los documentos asociados según tipo de factura
+  `factura` VARCHAR(100) DEFAULT NULL, -- Número o identificador del documento
+  `comprobante_credito_fiscal` VARCHAR(100) DEFAULT NULL,
+  `factura_exportacion` VARCHAR(100) DEFAULT NULL,
+  `nota_credito` VARCHAR(100) DEFAULT NULL,
+  `nota_debito` VARCHAR(100) DEFAULT NULL,
+  `nota_remision` VARCHAR(100) DEFAULT NULL,
+  `comprobante_liquidacion` VARCHAR(100) DEFAULT NULL,
+  `comprobante_retencion` VARCHAR(100) DEFAULT NULL,
+  `documento_contable_liquidacion` VARCHAR(100) DEFAULT NULL,
+  `comprobante_donacion` VARCHAR(100) DEFAULT NULL,
+  `factura_sujeto_excluido` VARCHAR(100) DEFAULT NULL,
+  PRIMARY KEY (`idVentas`),
+  FOREIGN KEY (`cliente_id`) REFERENCES `clientes`(`idCliente`) ON DELETE SET NULL,
+  FOREIGN KEY (`empleado_id`) REFERENCES `empleados`(`id`) ON DELETE RESTRICT
+);
+select * from ventas;
+-- Agregar campo descuento a la tabla ventas oara autorizacion
+ALTER TABLE `ventas` ADD COLUMN `descuento` DECIMAL(5,2) DEFAULT 0.00;
+
+-- Crear tabla para códigos de autorización
+CREATE TABLE `codigos_autorizacion` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `codigo` VARCHAR(255) NOT NULL, -- Cifrado con bcrypt
+  `fecha_creacion` DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Contra con hash para codigos creada desde el backend
+INSERT INTO codigos_autorizacion (codigo) VALUES ('$2b$10$PrtBre2/YddNO45AvltQP.wXo/K0/X4iQlcgIqrwFgLLi2VLaeyQW');
+
+
+-- tabla historial de cambios de ventas
+CREATE TABLE `historial_cambios_ventas` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `venta_id` INT NOT NULL,
+  `codigo_venta` VARCHAR(50) NOT NULL,
+  `fecha_cambio` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `datos_anteriores` JSON NOT NULL, -- Estado anterior de la venta
+  `datos_nuevos` JSON NOT NULL, -- Estado nuevo después del cambio
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`venta_id`) REFERENCES `ventas`(`idVentas`) ON DELETE CASCADE
+);
+
+select * from historial_cambios_ventas;
+
+
+
 
 -- Tabla Detalle Ventas
 CREATE TABLE `detalle_ventas` (
   `idDetalle` int NOT NULL AUTO_INCREMENT,
   `idVentas` int NOT NULL,
-  `codigo_producto` varchar(50) NOT NULL,
+  `codigo_producto` varchar(50) NOT NULL COLLATE utf8mb4_general_ci,  -- Aquí se ajusta la colación
   `nombre` varchar(100) NOT NULL,
   `cantidad` int NOT NULL,
   `precio_unitario` decimal(10,2) NOT NULL,
   `subtotal` decimal(10,2) NOT NULL,
   PRIMARY KEY (`idDetalle`),
   FOREIGN KEY (`idVentas`) REFERENCES `ventas`(`idVentas`),
-  FOREIGN KEY (`codigo_producto`) REFERENCES `inventario`(`codigo`)
+  FOREIGN KEY (`codigo_producto`) REFERENCES `inventario`(`codigo`)  -- Definimos la FK con la tabla inventario
 );
+SHOW FULL COLUMNS FROM inventario;
+drop table detalle_ventas;
 
 
 
 -- Tabla Traslados (simplificada sin dependencias eliminadas)
+-- Tabla Traslados (modificada para usar códigos)
 CREATE TABLE `traslados` (
   `id` int NOT NULL AUTO_INCREMENT,
   `codigo_traslado` varchar(50) NOT NULL,
-  `inventario_id` int NOT NULL,
-  `origen` varchar(50) NOT NULL, -- Nombre de sucursal en texto
-  `destino` varchar(50) NOT NULL, -- Nombre de sucursal en texto
+  `codigo_inventario` varchar(50) NOT NULL, -- Cambiado a código
+  `codigo_sucursal_origen` varchar(50) NOT NULL, -- Código de sucursal
+  `codigo_sucursal_destino` varchar(50) NOT NULL, -- Código de sucursal
+  `codigo_empleado` varchar(20) NOT NULL, -- Código de empleado
   `cantidad` int NOT NULL,
   `fecha_traslado` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `responsable` varchar(100) NOT NULL, -- Nombre del responsable directo
   `estado` enum('Pendiente','Completado','Cancelado') NOT NULL DEFAULT 'Pendiente',
   PRIMARY KEY (`id`),
   UNIQUE KEY `codigo_traslado` (`codigo_traslado`),
-  FOREIGN KEY (`inventario_id`) REFERENCES `inventario`(`id`)
+  FOREIGN KEY (`codigo_inventario`) REFERENCES `inventario`(`codigo`),
+  FOREIGN KEY (`codigo_sucursal_origen`) REFERENCES `sucursal`(`codigo`),
+  FOREIGN KEY (`codigo_sucursal_destino`) REFERENCES `sucursal`(`codigo`)
 );
+
+ALTER TABLE traslados DROP FOREIGN KEY traslados_ibfk_1;
+
+-- Modificar la tabla traslados para eliminar codigo_inventario y cantidad
+ALTER TABLE traslados
+  DROP COLUMN codigo_inventario,
+  DROP COLUMN cantidad;
+
+
+SHOW CREATE TABLE inventario;
+
+-- Crear tabla detalle_traslados
+CREATE TABLE detalle_traslados (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  traslado_id INT NOT NULL,
+  codigo_inventario VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  cantidad INT NOT NULL,
+  FOREIGN KEY (traslado_id) REFERENCES traslados(id) ON DELETE CASCADE,
+  FOREIGN KEY (codigo_inventario) REFERENCES inventario(codigo)
+);
+
+
+CREATE TABLE historial_cambios_traslados (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  traslado_id INT NOT NULL,
+  codigo_traslado VARCHAR(50) NOT NULL,
+  datos_anteriores JSON NOT NULL,
+  datos_nuevos JSON NOT NULL,
+  fecha_cambio DATETIME NOT NULL,
+  FOREIGN KEY (traslado_id) REFERENCES traslados(id)
+);
+
 
 -- Tabla Ofertas
 CREATE TABLE `ofertas` (
@@ -201,18 +283,68 @@ CREATE TABLE `ofertas` (
   FOREIGN KEY (`inventario_id`) REFERENCES `inventario`(`id`)
 );
 
-
-
-
-select * from clientes;
-INSERT INTO clientes (nombre, direccion, dui, nit, tipo_cliente, email, telefono)  
-VALUES ('Juan Pérez', 'San Salvador, El Salvador', '12345678-9', '0614-050616-101-3', 'Natural', 'juan@example.com', '7777-7777');
-
-
-INSERT INTO ventas (cliente_id, tipo_factura, metodo_pago, total, descripcion_compra)  
-VALUES (1, 'Consumidor Final', 'Efectivo', 1200.00, 'Venta de motocicleta');
+ALTER TABLE ofertas ADD COLUMN codigo_oferta VARCHAR(50) NOT NULL UNIQUE;
 select * from ventas;
 
-INSERT INTO detalle_ventas (idVentas, codigo_producto, nombre, cantidad, precio_unitario, subtotal)  
-VALUES (LAST_INSERT_ID(), 'PROD001', 'Motocicleta XYZ', 1, 1200.00, 1200.00);
+ALTER TABLE ofertas MODIFY COLUMN fecha_inicio DATETIME NOT NULL;
+ALTER TABLE ofertas MODIFY COLUMN fecha_fin DATETIME NOT NULL;
+
+CREATE TABLE historial_cambios_ofertas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  oferta_id INT NOT NULL,
+  codigo_oferta VARCHAR(50) NOT NULL,
+  datos_anteriores JSON NOT NULL,
+  datos_nuevos JSON NOT NULL,
+  fecha_cambio DATETIME NOT NULL,
+  FOREIGN KEY (oferta_id) REFERENCES ofertas(id)
+);
+
+
+
+-- // Empleados
+-- Tabla 'empleados'
+CREATE TABLE `empleados` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombres` varchar(100) NOT NULL,
+  `apellidos` varchar(100) NOT NULL,
+  `profesion` varchar(100) DEFAULT NULL,
+  `codigo_empleado` varchar(20) NOT NULL,
+  `afp` varchar(20) DEFAULT NULL,
+  `isss` varchar(20) DEFAULT NULL,
+  `dui` varchar(10) DEFAULT NULL,
+  `cargo` varchar(50) NOT NULL CHECK (`cargo` in ('Administrador','Gerente','Cajero','Vendedor','Bodeguero')),
+  `sucursal` varchar(100) DEFAULT NULL,
+  `telefono` varchar(9) DEFAULT NULL,
+  `celular` varchar(9) DEFAULT NULL,
+  `correo` varchar(100) DEFAULT NULL,
+  `direccion` text DEFAULT NULL,
+  `estado` enum('Activo','Inactivo') NOT NULL DEFAULT 'Activo',
+  `sueldo_base` decimal(10,2) DEFAULT NULL,
+  `licencia` varchar(50) DEFAULT NULL,
+  `fecha_creacion` datetime DEFAULT current_timestamp(),
+  `fecha_actualizacion` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
+);
+
+
+-- Tabla 'usuarios'
+CREATE TABLE `usuarios` (
+  `id` int(11) PRIMARY KEY AUTO_INCREMENT,
+  `empleado_id` int(11) DEFAULT NULL,
+  `nombre_completo` varchar(255) NOT NULL,
+  `usuario` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `tipo_cuenta` varchar(50) NOT NULL CHECK (`tipo_cuenta` in ('Admin','Root','Normal')),
+  `cargo` varchar(50) NOT NULL CHECK (`cargo` in ('Administrador','Gerente','Cajero','Vendedor','Bodeguero')),
+  `fecha_creacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `fecha_actualizacion` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`empleado_id`) REFERENCES `empleados`(`id`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE
+);
+
+select * from usuarios;
+use sistema_dycris;
+SELECT * FROM codigos_autorizacion;
 

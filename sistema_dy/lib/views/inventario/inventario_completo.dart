@@ -258,13 +258,11 @@ class _InventarioCompletoScreenState extends State<InventarioCompletoScreen> {
                                   DataCell(Text(inventario['categoria'] ?? '')),
                                   DataCell(Text(inventario['sucursal'] ?? '')),
                                   DataCell(Text(
-                                      inventario['costo']?.toString() ?? '0')),
+                                      '\$${inventario['costo']?.toString() ?? '0'}')),
                                   DataCell(Text(
-                                      inventario['credito']?.toString() ??
-                                          '0')),
+                                      '\$${inventario['credito']?.toString() ?? '0'}')),
                                   DataCell(Text(
-                                      inventario['precio_venta']?.toString() ??
-                                          '0')),
+                                      '\$${inventario['precio_venta']?.toString() ?? '0'}')),
                                   DataCell(Text(inventario['stock_existencia']
                                           ?.toString() ??
                                       '0')),

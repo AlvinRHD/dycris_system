@@ -348,153 +348,238 @@ class _RegistrarProductosState extends State<RegistrarProductos> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
-          ),
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 600), // Aumentar el ancho máximo
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Text(
+                        "Registro de Producto",
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1976D2),
+                        ),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                      const SizedBox(height: 16),
+                      Form(
+                        key: _formKey,
                         child: Column(
                           children: <Widget>[
-                            const Text(
-                              "Registro de Producto",
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1976D2),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Form(
-                              key: _formKey,
-                              child: Column(
-                                children: <Widget>[
-                                  _buildTextField(
+                            // Primera fila
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _codigoController,
                                     label: "Código",
                                     icon: Icons.code,
                                   ),
-                                  _buildTextField(
+                                ),
+                                const SizedBox(width: 16), // Espacio entre campos
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _nombreController,
                                     label: "Nombre",
                                     icon: Icons.text_fields,
                                   ),
-                                  _buildTextField(
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16), // Espacio entre filas
+                            // Segunda fila
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _descripcionController,
                                     label: "Descripción",
                                     icon: Icons.description,
                                   ),
-                                  _buildTextField(
+                                ),
+                                const SizedBox(width: 16), // Espacio entre campos
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _numeroMotorController,
                                     label: "Número de Motor",
                                     icon: Icons.motorcycle,
                                   ),
-                                  _buildTextField(
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16), // Espacio entre filas
+                            // Tercera fila
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _numeroChasisController,
                                     label: "Número de Chasis",
                                     icon: Icons.car_repair,
                                   ),
-                                  _buildTextField(
+                                ),
+                                const SizedBox(width: 16), // Espacio entre campos
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _precioVentaController,
                                     label: "Precio de Venta",
                                     icon: Icons.attach_money,
                                     isNumeric: true,
                                   ),
-                                  _buildTextField(
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16), // Espacio entre filas
+                            // Cuarta fila
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _costoController,
                                     label: "Costo",
                                     icon: Icons.monetization_on,
                                     isNumeric: true,
                                   ),
-                                  _buildTextField(
+                                ),
+                                const SizedBox(width: 16), // Espacio entre campos
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _creditoController,
-                                    label: "Credito",
+                                    label: "Crédito",
                                     icon: Icons.credit_card,
                                     isNumeric: true,
                                   ),
-                                  _buildTextField(
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16), // Espacio entre filas
+                            // Quinta fila
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _stockExistenciaController,
                                     label: "Stock Existencia",
                                     icon: Icons.store,
                                     isNumeric: true,
                                   ),
-                                  _buildTextField(
+                                ),
+                                const SizedBox(width: 16), // Espacio entre campos
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _stockMinimoController,
                                     label: "Stock Mínimo",
                                     icon: Icons.store_mall_directory,
                                     isNumeric: true,
                                   ),
-                                  _buildDateField(
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16), // Espacio entre filas
+                            // Sexta fila
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _buildDateField(
                                     controller: _fechaIngresoController,
                                     label: "Fecha de Ingreso",
                                     icon: Icons.date_range,
                                   ),
-                                  _buildDateField(
+                                ),
+                                const SizedBox(width: 16), // Espacio entre campos
+                                Expanded(
+                                  child: _buildDateField(
                                     controller: _fechaReingresoController,
                                     label: "Fecha de Reingreso",
                                     icon: Icons.date_range,
                                   ),
-                                  _buildTextField(
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16), // Espacio entre filas
+                            // Séptima fila
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _numeroPolizaController,
-                                    label: "Numero de poliza",
+                                    label: "Número de Póliza",
                                     icon: Icons.policy,
                                   ),
-                                  _buildTextField(
+                                ),
+                                const SizedBox(width: 16), // Espacio entre campos
+                                Expanded(
+                                  child: _buildTextField(
                                     controller: _numeroLoteController,
-                                    label: "Numero de lote",
+                                    label: "Número de Lote",
                                     icon: Icons.confirmation_number,
                                   ),
-                                  _buildCategoriaDropdown(),
-                                  _buildSucursalDropdown(),
-                                  _buildProveedorDropdown(),
-                                  _buildImagePicker(), // Selector de imagen
-                                  const SizedBox(height: 16),
-                                  ElevatedButton(
-                                    onPressed: _registrarProducto,
-                                    child: const Text('Registrar Producto'),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ElevatedButton(
-                                    onPressed: _regresarAHome,
-                                    child: const Text('Regresar'),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16), // Espacio entre filas
+                            // Dropdowns y selector de imagen
+                            _buildCategoriaDropdown(),
+                            const SizedBox(height: 16),
+                            _buildSucursalDropdown(),
+                            const SizedBox(height: 16),
+                            _buildProveedorDropdown(),
+                            const SizedBox(height: 16),
+                            _buildImagePicker(), // Selector de imagen
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _registrarProducto,
+                              child: const Text('Registrar Producto'),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: _regresarAHome,
+                              child: const Text('Regresar'),
                             ),
                           ],
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    );
-  }
+    )
+  );
+}
+}
 
   Future<String?> _uploadImage(Uint8List imageBytes, String imageName) async {
     final url = Uri.parse('http://localhost:3000/api/upload'); // Ajusta la URL
@@ -562,4 +647,3 @@ class _RegistrarProductosState extends State<RegistrarProductos> {
       ),
     );
   }
-}

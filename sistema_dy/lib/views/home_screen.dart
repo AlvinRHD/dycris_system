@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:sistema_dy/views/categoria/lista_categoria.dart';
-import 'package:sistema_dy/views/proveedores/proveedores_screen.dart';
-import 'package:sistema_dy/views/sucursal/mostrar_sucursales.dart';
-
-import 'inventario/inventario_screen.dart';
-import 'login/login_screen.dart';
-import 'login/usuarios_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'modulo_usuarios/login_screen.dart';
+import 'modulo_usuarios/user_screen.dart';
+import 'modulo_empleados/empleados_screen.dart';
+import 'categoria/lista_categoria.dart';
+import 'movimientos/ventas/clientes/clientes_screen.dart';
+import 'movimientos/ventas/clientes/clientes_api.dart'; // Nueva importación
+import 'proveedores/proveedores_screen.dart';
+import 'sucursal/mostrar_sucursales.dart';
 import 'movimientos/movimientos_screen.dart';
+import 'inventario/inventario_screen.dart';
+import 'package:flutter/foundation.dart';
+
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -15,7 +23,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Dashboard Pro',
+      title: 'Dashboard',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
@@ -25,24 +33,22 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
         textTheme: const TextTheme(
           titleLarge: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'GoogleSans',
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-          ),
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'GoogleSans'),
+          bodyMedium: TextStyle(fontSize: 14, color: Colors.black87),
         ),
         cardTheme: const CardTheme(
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
+              borderRadius: BorderRadius.all(Radius.circular(16))),
           surfaceTintColor: Colors.white,
         ),
       ),
       home: const LoginScreen(),
+      routes: {
+        '/login': (context) => const LoginScreen(),
+      },
     );
   }
 }
@@ -57,6 +63,43 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  int _totalClientes = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarTotalClientes();
+    if (kDebugMode) {
+      print("Datos del usuario recibido: ${widget.userData}");
+    }
+  }
+
+  // Función para obtener el total de clientes usando ClientesApi
+  Future<void> _cargarTotalClientes() async {
+    try {
+      final response = await ClientesApi().getClientes(
+          page: 1, limit: 10); // Solo necesitamos el total, no todos los datos
+      setState(() {
+        _totalClientes = response['total'];
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error cargando total de clientes: $e");
+      }
+    }
+  }
+
+  // Función para formatear la fecha
+  String _formatDate(String isoDate) {
+    try {
+      DateTime date = DateTime.parse(isoDate);
+      return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return 'Fecha no disponible';
+    }
+  }
+
+  /// Muestra un menú emergente con la información del usuario.
   void _showUserModal(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
@@ -67,8 +110,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showMenu(
       context: context,
       position: RelativeRect.fromLTRB(
-        screenWidth - menuWidth - rightMargin, // Posición izquierda calculada
-        topMargin, // 50px desde el borde superior
+        screenWidth - menuWidth - rightMargin,
+        topMargin,
         0,
         0,
       ),
@@ -87,8 +130,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 12),
                 _buildUserInfoRow('Usuario:', widget.userData['usuario']),
                 const SizedBox(height: 12),
-                _buildUserInfoRow('Rol:', widget.userData['rol']),
-                const SizedBox(height: 20),
+                _buildUserInfoRow('Cargo:', widget.userData['cargo'] ?? ''),
+                const SizedBox(height: 12),
+                _buildUserInfoRow(
+                    'Tipo de cuenta:', widget.userData['tipo_cuenta'] ?? ''),
+                const SizedBox(height: 12),
+                _buildUserInfoRow('Inicio de sesión:',
+                    _formatDate(widget.userData['fecha_inicio'] ?? '')),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -102,7 +151,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         side: BorderSide(color: Colors.red.shade100),
                       ),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.remove('token');
                       Navigator.pop(context);
                       Navigator.pushReplacement(
                         context,
@@ -126,6 +177,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Construye una fila con la información del usuario.
   Widget _buildUserInfoRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,10 +187,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Text(
             label,
             style: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-              color: Colors.grey.shade700,
-            ),
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: Colors.grey.shade700),
           ),
         ),
         const SizedBox(width: 12),
@@ -146,10 +197,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Text(
             value,
             style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: Colors.black87,
-            ),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Colors.black87),
           ),
         ),
       ],
@@ -162,9 +212,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'GRUPO RAMOS',
-          style: TextStyle(fontFamily: 'GoogleSans'),
+        title: Row(
+          children: [
+            Image.asset('assets/logos/logoEmpresa.jpg', height: 150),
+            const SizedBox(width: 8),
+            const Text('GRUPO RAMOS',
+                style: TextStyle(fontFamily: 'GoogleSans')),
+          ],
         ),
         centerTitle: false,
         titleSpacing: 16.0,
@@ -181,13 +235,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  // ignore: deprecated_member_use
                   color: Colors.white.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                   boxShadow: [
                     BoxShadow(
-                      // ignore: deprecated_member_use
                       color: Colors.black.withOpacity(0.05),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
@@ -203,10 +255,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Text(
                       widget.userData['usuario'],
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: colorScheme.onSurface,
-                      ),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurface),
                     ),
                     const SizedBox(width: 4),
                     Icon(Icons.arrow_drop_down,
@@ -219,116 +270,140 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              int crossAxisCount;
-              if (constraints.maxWidth >= 1000) {
-                crossAxisCount = 4;
-              } else if (constraints.maxWidth >= 600) {
-                crossAxisCount = 3;
-              } else if (constraints.maxWidth >= 400) {
-                crossAxisCount = 2;
-              } else {
-                crossAxisCount = 1;
-              }
-
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 20,
-                childAspectRatio: 1.8,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  DashboardCard(
-                    title: 'Inventario',
-                    icon: Icons.inventory_2,
-                    color: colorScheme.primary,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                InventarioScreen()), // Redirige a Inventario
-                      );
-                    },
-                  ),
-                  DashboardCard(
-                    title: 'Proveedores',
-                    icon: Icons.person_remove_rounded,
-                    color: colorScheme.tertiary,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ProveedoresScreen()),
-                      );
-                    },
-                  ),
-                  DashboardCard(
-                    title: 'Categorias',
-                    icon: Icons.category,
-                    color: colorScheme.tertiary,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => ListaCategorias()),
-                      );
-                    },
-                  ),
-                  DashboardCard(
-                    title: 'Sucursales',
-                    icon: Icons.store,
-                    color: colorScheme.tertiary,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => MostrarSucursales()),
-                      );
-                    },
-                  ),
-                  DashboardCard(
-                    title: 'Usuarios',
-                    icon: Icons.people_alt,
-                    color: colorScheme.tertiary,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const UsuariosScreen()),
-                      );
-                    },
-                  ),
-                  DashboardCard(
-                    title: 'Movimientos',
-                    icon: Icons.swap_horiz,
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const MovimientosScreen()),
-                      );
-                    },
-                  ),
-                  //DashboardCard(
-                  //title: 'Movimientos',
-                  //icon: Icons.swap_horiz,
-                  //color: Colors.orange,
-                  //onTap: () {
-                  //Navigator.push(
-                  //context,
-                  //MaterialPageRoute(
-                  //builder: (context) => const MovimientosScreen()),
-                  //);
-                  //},
-                  //),
+                  Image.asset('assets/logos/logo1.jpg', height: 100),
+                  Image.asset('assets/logos/logo2.jpg', height: 100),
+                  Image.asset('assets/logos/logo3.jpg', height: 100),
                 ],
-              );
-            },
-          ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    int crossAxisCount;
+                    if (constraints.maxWidth >= 1000) {
+                      crossAxisCount = 4;
+                    } else if (constraints.maxWidth >= 600) {
+                      crossAxisCount = 3;
+                    } else if (constraints.maxWidth >= 400) {
+                      crossAxisCount = 2;
+                    } else {
+                      crossAxisCount = 1;
+                    }
+
+                    return GridView.count(
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: 20,
+                      crossAxisSpacing: 20,
+                      childAspectRatio: 1.8,
+                      children: [
+                        DashboardCard(
+                          title: 'Usuarios',
+                          icon: Icons.group,
+                          color: const Color.fromARGB(255, 96, 145, 241),
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const UsuariosScreen()));
+                          },
+                        ),
+                        DashboardCard(
+                          title: 'Empleados',
+                          icon: Icons.work,
+                          color: Colors.indigo,
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const EmpleadosScreen()));
+                          },
+                        ),
+                        DashboardCard(
+                          title: 'Inventario',
+                          icon: Icons.inventory_2,
+                          color: colorScheme.primary,
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => InventarioScreen()));
+                          },
+                        ),
+                        DashboardCard(
+                          title: 'Proveedores',
+                          icon: Icons.person_remove_rounded,
+                          color: colorScheme.tertiary,
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ProveedoresScreen()));
+                          },
+                        ),
+                        DashboardCard(
+                          title: 'Categorias',
+                          icon: Icons.category,
+                          color: colorScheme.tertiary,
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => ListaCategorias()));
+                          },
+                        ),
+                        DashboardCard(
+                          title: 'Sucursales',
+                          icon: Icons.store,
+                          color: colorScheme.tertiary,
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => MostrarSucursales()));
+                          },
+                        ),
+                        DashboardCard(
+                          title: 'Movimientos',
+                          icon: Icons.swap_horiz,
+                          color: Colors.orange,
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const MovimientosScreen()));
+                          },
+                        ),
+                        DashboardCard(
+                          title: '$_totalClientes\nClientes',
+                          icon: Icons.people_outline,
+                          color: Colors.purple,
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => ClientesScreen()));
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -339,9 +414,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       SnackBar(
         content: Text('Sección seleccionada: $text'),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -353,13 +426,12 @@ class DashboardCard extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const DashboardCard({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
+  const DashboardCard(
+      {super.key,
+      required this.title,
+      required this.icon,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -377,38 +449,30 @@ class DashboardCard extends StatelessWidget {
             color: theme.cardColor,
             boxShadow: [
               BoxShadow(
-                // ignore: deprecated_member_use
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2)),
             ],
           ),
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Row(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      // ignore: deprecated_member_use
-                      color: color.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 32,
-                      color: color,
-                    ),
+                        color: color.withOpacity(0.1), shape: BoxShape.circle),
+                    child: Icon(icon, size: 32, color: color),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 8),
                   Text(
                     title,
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium!.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                        fontWeight: FontWeight.bold,
+                        fontSize: title.contains('\n') ? 18 : 16),
                   ),
                 ],
               ),
