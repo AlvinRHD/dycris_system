@@ -53,6 +53,7 @@ const usuariosRoutes = require('./server_routes/server_usuarios');
 const empleadosRoutes = require('./server_routes/server_empleados');
 const inventarioRoutes = require("./server_routes/server_inventario");
 const movimientosRoutes = require("./server_routes/server_movimientos");
+const movimimientosTemporalesRouter = require("./server_routes/server_movimientos_temporales");
 
 // Montar rutas de la API
 app.use('/', authRoutes);
@@ -60,6 +61,7 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api', empleadosRoutes);
 app.use("/api", inventarioRoutes);
 app.use("/api", movimientosRoutes);
+app.use("/api", movimimientosTemporalesRouter);
 
 // Cron job: Ejecutar cada 2 minutos para pruebas
 // Eliminar físicamente empleados inactivos cuya fecha_actualizacion sea anterior a la fecha actual menos 5 minutos.

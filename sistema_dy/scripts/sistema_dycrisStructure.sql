@@ -260,6 +260,33 @@ SHOW FULL COLUMNS FROM inventario;
 
 
 
+
+-- tabla temporal para sucursales/ventas
+CREATE TABLE ventas_sucursales_manual (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    venta_id INT NOT NULL,
+    sucursal_nombre VARCHAR(100) NOT NULL,
+    fecha_asignacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (venta_id) REFERENCES ventas(idVentas) ON DELETE CASCADE,
+    UNIQUE (venta_id) -- Evita duplicados: una venta solo puede estar asignada a una sucursal
+);
+select * from ventas_sucursales_manual;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 -- Tabla Traslados (simplificada sin dependencias eliminadas)
 -- Tabla Traslados (modificada para usar códigos)
 CREATE TABLE `traslados` (

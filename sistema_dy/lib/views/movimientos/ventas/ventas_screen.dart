@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'agregar_venta_screen.dart';
+import 'asignar_sucursal_manual_screen.dart';
 import 'editar_venta_screen.dart';
 import 'venta_widgets.dart';
 import 'venta_api.dart';
@@ -31,6 +32,20 @@ class _VentasScreenState extends State<VentasScreen> {
     _searchController.dispose();
     super.dispose();
   }
+
+// Nuevo botón "Mandar a Sucursal" temporal, lo vamos a eliminar
+  void _asignarSucursalManual(Map<String, dynamic> venta) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AsignarSucursalManualScreen(venta: venta),
+      ),
+    );
+    if (result == true) {
+      _cargarVentas(); // Refrescar la lista después de asignar
+    }
+  }
+// Nuevo botón "Mandar a Sucursal" temporal, lo vamos a eliminar
 
   Future<void> _cargarVentas() async {
     try {
@@ -251,6 +266,12 @@ class _VentasScreenState extends State<VentasScreen> {
                                             onPressed: () => _eliminarVenta(
                                                 venta['idVentas']),
                                           ),
+                                          IconButton(
+                                            icon: Icon(Icons.store,
+                                                color: Colors.orange),
+                                            onPressed: () =>
+                                                _asignarSucursalManual(venta),
+                                          ), // Nuevo botón "Mandar a Sucursal"temporal, lo vamos a eliminar
                                         ],
                                       ),
                                     ),
@@ -305,6 +326,12 @@ class _VentasScreenState extends State<VentasScreen> {
                                             onPressed: () => _eliminarVenta(
                                                 venta['idVentas']),
                                           ),
+                                          IconButton(
+                                            icon: Icon(Icons.store,
+                                                color: Colors.orange),
+                                            onPressed: () =>
+                                                _asignarSucursalManual(venta),
+                                          ), // Nuevo botón "Mandar a Sucursal" lo vamos a eliminar
                                         ],
                                       ),
                                     ),

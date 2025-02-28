@@ -389,12 +389,18 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
             ? duiInputFormatters()
             : (label == 'NIT'
                 ? nitInputFormatters()
-                : (label == 'Teléfono'
+                : (label == 'Teléfono'
                     ? [
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(8)
                       ]
-                    : [])),
+                    : label == 'NRC'
+                        ? [
+                            FilteringTextInputFormatter.allow(
+                                RegExp(r'[A-Za-z0-9]')),
+                            LengthLimitingTextInputFormatter(11),
+                          ]
+                        : [])),
         validator: (value) {
           if (value == null || value.isEmpty) {
             if (label == 'Correspondencia') {
@@ -402,27 +408,27 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
             }
             return 'Por favor ingrese $label';
           }
-          if (label == 'Teléfono' &&
+          if (label == 'Teléfono' &&
               !RegExp(r'^\d{8}$').hasMatch(value ?? '')) {
-            return 'El teléfono es invalido.';
+            return 'El teléfono es invalido.';
           }
           if (label == 'DUI' && !RegExp(r'^\d{8}-\d$').hasMatch(value ?? '')) {
             return 'El DUI debe tener el formato xxxxxxxx-x';
           }
           if (label == 'NRC' &&
               !RegExp(r'^[A-Za-z0-9]{11}$').hasMatch(value ?? '')) {
-            return 'El NRC debe tener 11 caracteres alfanuméricos.';
+            return 'El NRC debe tener 11 caracteres alfanuméricos.';
           }
           if (label == 'NIT' &&
               !RegExp(r'^\d{4}-\d{6}-\d{3}-\d$').hasMatch(value ?? '')) {
             return 'El NIT debe tener el formato xxxx-xxxxxx-xxx-x';
           }
-          if (label == 'Correo Electrónico') {
+          if (label == 'Correo Electrónico') {
             final RegExp emailRegex = RegExp(
               r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
             );
             if (!emailRegex.hasMatch(value)) {
-              return 'Ingrese un correo electrónico válido';
+              return 'Ingrese un correo electrónico válido';
             }
           }
           return null;

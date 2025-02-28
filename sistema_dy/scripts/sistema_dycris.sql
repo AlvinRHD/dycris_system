@@ -1,568 +1,684 @@
--- phpMyAdmin SQL Dump
--- version 5.2.1
--- https://www.phpmyadmin.net/
+CREATE DATABASE  IF NOT EXISTS `sistema_dycris` /*!80016 DEFAULT ENCRYPTION='N' */;
+USE `sistema_dycris`;
+-- MySQL dump 10.13  Distrib 8.0.40, for Win64 (x86_64)
 --
--- Servidor: localhost
--- Tiempo de generación: 24-02-2025 a las 15:09:05
--- Versión del servidor: 10.4.32-MariaDB
--- Versión de PHP: 8.2.12
-
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
-SET time_zone = "+00:00";
-
+-- Host: 127.0.0.1    Database: sistema_dycris
+-- ------------------------------------------------------
+-- Server version	9.1.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Base de datos: `sistema_dycris`
+-- Table structure for table `categoria`
 --
 
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `categoria`
---
-
+DROP TABLE IF EXISTS `categoria`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `categoria` (
-  `id` int(11) NOT NULL,
-  `nombre` varchar(100) NOT NULL,
-  `descripcion` text DEFAULT NULL,
-  `fecha_creacion` timestamp NULL DEFAULT current_timestamp(),
-  `estado` enum('Activo','Inactivo') NOT NULL DEFAULT 'Activo'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `descripcion` text COLLATE utf8mb4_general_ci,
+  `fecha_creacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `estado` enum('Activo','Inactivo') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Activo',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `nombre` (`nombre`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `categoria`
+-- Dumping data for table `categoria`
 --
 
-INSERT INTO `categoria` (`id`, `nombre`, `descripcion`, `fecha_creacion`, `estado`) VALUES
-(1, 'Tecnología', 'Productos electrónicos, computadores, etc.', '2025-02-18 16:36:20', 'Activo'),
-(2, 'Motores', 'ninguna por el momento', '2025-02-18 18:46:16', 'Activo');
-
--- --------------------------------------------------------
+LOCK TABLES `categoria` WRITE;
+/*!40000 ALTER TABLE `categoria` DISABLE KEYS */;
+INSERT INTO `categoria` VALUES (1,'Tecnología','Productos electrónicos, computadores, etc.','2025-02-18 16:36:20','Activo'),(2,'Motores','ninguna por el momento','2025-02-18 18:46:16','Activo');
+/*!40000 ALTER TABLE `categoria` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `clientes`
+-- Table structure for table `clientes`
 --
 
+DROP TABLE IF EXISTS `clientes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `clientes` (
-  `idCliente` int(11) NOT NULL,
-  `nombre` varchar(100) NOT NULL,
-  `direccion` varchar(200) DEFAULT NULL,
-  `dui` varchar(10) DEFAULT NULL,
-  `nit` varchar(17) DEFAULT NULL,
-  `tipo_cliente` enum('Consumidor Final','Contribuyente Jurídico','Natural','ONG','Sujeto Excluido') NOT NULL DEFAULT 'Natural',
-  `registro_contribuyente` varchar(20) DEFAULT NULL,
-  `representante_legal` varchar(100) DEFAULT NULL,
-  `direccion_representante` varchar(200) DEFAULT NULL,
-  `razon_social` varchar(100) DEFAULT NULL,
-  `email` varchar(100) NOT NULL,
-  `telefono` varchar(15) NOT NULL,
+  `idCliente` int NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `direccion` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `dui` varchar(10) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nit` varchar(17) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `tipo_cliente` enum('Consumidor Final','Contribuyente Jurídico','Natural','ONG','Sujeto Excluido') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Natural',
+  `registro_contribuyente` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `representante_legal` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `direccion_representante` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `razon_social` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `telefono` varchar(15) COLLATE utf8mb4_general_ci NOT NULL,
   `fecha_inicio` date DEFAULT NULL,
   `fecha_fin` date DEFAULT NULL,
-  `porcentaje_retencion` decimal(5,2) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `porcentaje_retencion` decimal(5,2) DEFAULT NULL,
+  `codigo_cliente` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  PRIMARY KEY (`idCliente`)
+) ;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `clientes`
+-- Dumping data for table `clientes`
 --
 
-INSERT INTO `clientes` (`idCliente`, `nombre`, `direccion`, `dui`, `nit`, `tipo_cliente`, `registro_contribuyente`, `representante_legal`, `direccion_representante`, `razon_social`, `email`, `telefono`, `fecha_inicio`, `fecha_fin`, `porcentaje_retencion`) VALUES
-(1, 'Juan Pérez', 'ahora si con direccion', '12345678-9', '0614-050616-101-3', 'Natural', NULL, NULL, NULL, NULL, 'juan@example.com', '7777-7777', NULL, NULL, NULL),
-(2, 'Alvin Rosales', 'Col. Fatima', '06626539-1', '06626539-1', 'Natural', NULL, NULL, NULL, NULL, 'ezequielhernandes907@gmail.com', '1212-1212', NULL, NULL, NULL),
-(3, 'alvin', 'col.fatima', '', '', 'Consumidor Final', '1212-12121212', '', '', '', 'alvin@gmail.com', '1212-1212', '2025-02-17', '2025-02-28', NULL),
-(5, 'Juan Rodriguez Gonzales Hernandez', 'por ahi', '', '0614-050616-101-3', 'Sujeto Excluido', '', '', '', '', 'juan@gmail.com', '1212-1212', '2025-02-19', '2025-02-20', 10.00),
-(6, 'aasas', 'asasas', '', '0122-121212-121-2', 'Sujeto Excluido', '', '', '', '', '1212@gmail.com', '1212', '2025-02-19', '2025-02-20', 10.00),
-(7, 'edit', 'asasas', '14141212-9', '1212-121221-121-1', 'Natural', '12121212121212', 'empresa', 'cop as', '', 'edit@gmail.com', '14514143', '2025-02-19', NULL, NULL);
-
--- --------------------------------------------------------
+LOCK TABLES `clientes` WRITE;
+/*!40000 ALTER TABLE `clientes` DISABLE KEYS */;
+INSERT INTO `clientes` VALUES (17,'Alfonso','Col. fatima',NULL,'1212-121212-121-2','Contribuyente Jurídico','12121212121212','no tiene','no tiene',NULL,'notiene@gmail.com','1212-1212','2025-02-27',NULL,NULL,'CGR-00001'),(18,'Melvado Alfarran','col.fatima',NULL,'1212-121212-121-2','ONG','121212121212',NULL,NULL,'melvadas','melvadas@gmail.com','1212-1212','2025-02-27',NULL,NULL,'CGR-00002'),(19,'Dantrio','col. fatima','06626539-1','1212-121212-121-2','Natural','1212121212',NULL,NULL,NULL,'dantrio@gmail.com','1212-1212','2025-02-27',NULL,NULL,'CGR-00003');
+/*!40000 ALTER TABLE `clientes` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `detalle_ventas`
+-- Table structure for table `codigos_autorizacion`
 --
 
+DROP TABLE IF EXISTS `codigos_autorizacion`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `codigos_autorizacion` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(255) NOT NULL,
+  `fecha_creacion` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `codigos_autorizacion`
+--
+
+LOCK TABLES `codigos_autorizacion` WRITE;
+/*!40000 ALTER TABLE `codigos_autorizacion` DISABLE KEYS */;
+INSERT INTO `codigos_autorizacion` VALUES (1,'$2b$10$PrtBre2/YddNO45AvltQP.wXo/K0/X4iQlcgIqrwFgLLi2VLaeyQW','2025-02-25 13:19:48');
+/*!40000 ALTER TABLE `codigos_autorizacion` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `detalle_traslados`
+--
+
+DROP TABLE IF EXISTS `detalle_traslados`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `detalle_traslados` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `traslado_id` int NOT NULL,
+  `codigo_inventario` varchar(50) NOT NULL,
+  `cantidad` int NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `traslado_id` (`traslado_id`),
+  KEY `codigo_inventario` (`codigo_inventario`),
+  CONSTRAINT `detalle_traslados_ibfk_1` FOREIGN KEY (`traslado_id`) REFERENCES `traslados` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `detalle_traslados_ibfk_2` FOREIGN KEY (`codigo_inventario`) REFERENCES `inventario` (`codigo`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `detalle_traslados`
+--
+
+LOCK TABLES `detalle_traslados` WRITE;
+/*!40000 ALTER TABLE `detalle_traslados` DISABLE KEYS */;
+INSERT INTO `detalle_traslados` VALUES (1,17,'2323',5);
+/*!40000 ALTER TABLE `detalle_traslados` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `detalle_ventas`
+--
+
+DROP TABLE IF EXISTS `detalle_ventas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `detalle_ventas` (
-  `idDetalle` int(11) NOT NULL,
-  `idVentas` int(11) NOT NULL,
+  `idDetalle` int NOT NULL AUTO_INCREMENT,
+  `idVentas` int NOT NULL,
   `codigo_producto` varchar(50) NOT NULL,
   `nombre` varchar(100) NOT NULL,
-  `cantidad` int(11) NOT NULL,
+  `cantidad` int NOT NULL,
   `precio_unitario` decimal(10,2) NOT NULL,
-  `subtotal` decimal(10,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `subtotal` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`idDetalle`),
+  KEY `idVentas` (`idVentas`),
+  KEY `codigo_producto` (`codigo_producto`),
+  CONSTRAINT `detalle_ventas_ibfk_1` FOREIGN KEY (`idVentas`) REFERENCES `ventas` (`idVentas`),
+  CONSTRAINT `detalle_ventas_ibfk_2` FOREIGN KEY (`codigo_producto`) REFERENCES `inventario` (`codigo`)
+) ;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `detalle_ventas`
+-- Dumping data for table `detalle_ventas`
 --
 
-INSERT INTO `detalle_ventas` (`idDetalle`, `idVentas`, `codigo_producto`, `nombre`, `cantidad`, `precio_unitario`, `subtotal`) VALUES
-(2, 4, '1212', 'motor 1 editado', 11, 300.00, 3300.00),
-(3, 5, '1212', 'motor 1 editado', 1, 300.00, 300.00),
-(4, 6, '1212', 'motor 1 editado', 1, 300.00, 300.00);
-
--- --------------------------------------------------------
+LOCK TABLES `detalle_ventas` WRITE;
+/*!40000 ALTER TABLE `detalle_ventas` DISABLE KEYS */;
+INSERT INTO `detalle_ventas` VALUES (1,14,'2323','cocacola',1,300.00,300.00),(2,15,'2323','cocacola',3,300.00,900.00);
+/*!40000 ALTER TABLE `detalle_ventas` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `empleados`
+-- Table structure for table `empleados`
 --
 
+DROP TABLE IF EXISTS `empleados`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `empleados` (
-  `id` int(11) NOT NULL,
-  `nombres` varchar(100) NOT NULL,
-  `apellidos` varchar(100) NOT NULL,
-  `profesion` varchar(100) DEFAULT NULL,
-  `codigo_empleado` varchar(20) NOT NULL,
-  `afp` varchar(20) DEFAULT NULL,
-  `isss` varchar(20) DEFAULT NULL,
-  `dui` varchar(10) DEFAULT NULL,
-  `cargo` varchar(50) NOT NULL,
-  `sucursal` varchar(100) DEFAULT NULL,
-  `telefono` varchar(9) DEFAULT NULL,
-  `celular` varchar(9) DEFAULT NULL,
-  `correo` varchar(100) DEFAULT NULL,
-  `direccion` text DEFAULT NULL,
-  `estado` enum('Activo','Inactivo') NOT NULL DEFAULT 'Activo',
+  `id` int NOT NULL AUTO_INCREMENT,
+  `nombres` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `apellidos` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `profesion` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `codigo_empleado` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `afp` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `isss` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `dui` varchar(10) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cargo` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `sucursal` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `telefono` varchar(9) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `celular` varchar(9) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `correo` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `direccion` text COLLATE utf8mb4_general_ci,
+  `estado` enum('Activo','Inactivo') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Activo',
   `sueldo_base` decimal(10,2) DEFAULT NULL,
-  `licencia` varchar(50) DEFAULT NULL,
-  `fecha_creacion` datetime DEFAULT current_timestamp(),
-  `fecha_actualizacion` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `licencia` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `fecha_creacion` datetime DEFAULT CURRENT_TIMESTAMP,
+  `fecha_actualizacion` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `empleados`
+-- Dumping data for table `empleados`
 --
 
-INSERT INTO `empleados` (`id`, `nombres`, `apellidos`, `profesion`, `codigo_empleado`, `afp`, `isss`, `dui`, `cargo`, `sucursal`, `telefono`, `celular`, `correo`, `direccion`, `estado`, `sueldo_base`, `licencia`, `fecha_creacion`, `fecha_actualizacion`) VALUES
-(5, 'David', 'Portillo', 'Desarrollador', 'EMP-0002', '0200-2002-0222', '02-00202-02202-2', '01026537-7', 'Gerente', 'JUC123', '6728-9202', '9292-0220', 'dav@gmail.com', 'Berlin', 'Activo', 360.00, 'No posee licencia', '2025-02-13 16:15:40', '2025-02-14 10:27:48');
-
--- --------------------------------------------------------
+LOCK TABLES `empleados` WRITE;
+/*!40000 ALTER TABLE `empleados` DISABLE KEYS */;
+INSERT INTO `empleados` VALUES (5,'David','Portillo','Desarrollador','EMP-0002','0200-2002-0222','02-00202-02202-2','01026537-7','Gerente','JUC123','6728-9202','9292-0220','dav@gmail.com','Berlin','Activo',360.00,'No posee licencia','2025-02-13 16:15:40','2025-02-14 10:27:48'),(11,'Alvin','Rosales','Desarrollador','EMP-0003','06626539-1','12121212121212','06626539-1','Bodeguero','3344','7881-5424','7881-5424','alvin@gmail.com','col. fatima','Activo',4000.00,'Licencia Liviana','2025-02-26 19:41:21','2025-02-27 14:54:48');
+/*!40000 ALTER TABLE `empleados` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `historial_ajustes`
+-- Table structure for table `historial_ajustes`
 --
 
+DROP TABLE IF EXISTS `historial_ajustes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `historial_ajustes` (
-  `id` int(11) NOT NULL,
-  `codigo` varchar(50) NOT NULL,
-  `nombre` varchar(50) DEFAULT NULL,
-  `descripcion` text NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `nombre` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `descripcion` text COLLATE utf8mb4_general_ci NOT NULL,
   `precio` decimal(20,0) NOT NULL,
-  `fecha` datetime NOT NULL DEFAULT current_timestamp(),
-  `stock` int(11) NOT NULL,
-  `motivo` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `stock` int NOT NULL,
+  `motivo` text COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `historial_ajustes`
+-- Dumping data for table `historial_ajustes`
 --
 
-INSERT INTO `historial_ajustes` (`id`, `codigo`, `nombre`, `descripcion`, `precio`, `fecha`, `stock`, `motivo`) VALUES
-(1, '885', 'hhyyh', 'gg', 24, '2025-02-18 00:00:00', 6567, 'gg'),
-(2, '1212', 'motor 1 editado', 'es un motor poderoso', 300, '2025-02-18 12:28:34', 15, 'Equivocación de letras');
-
--- --------------------------------------------------------
+LOCK TABLES `historial_ajustes` WRITE;
+/*!40000 ALTER TABLE `historial_ajustes` DISABLE KEYS */;
+INSERT INTO `historial_ajustes` VALUES (1,'885','hhyyh','gg',24,'2025-02-18 00:00:00',6567,'gg'),(2,'1212','motor 1 editado','es un motor poderoso',300,'2025-02-18 12:28:34',15,'Equivocación de letras'),(3,'1212','motor 1 editado','es un motor poderoso',300,'2025-02-25 12:56:39',99,'mas unidades');
+/*!40000 ALTER TABLE `historial_ajustes` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `inventario`
+-- Table structure for table `historial_cambios_clientes`
 --
 
+DROP TABLE IF EXISTS `historial_cambios_clientes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `historial_cambios_clientes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `cliente_id` int NOT NULL,
+  `fecha_cambio` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `datos_anteriores` json NOT NULL,
+  `datos_nuevos` json NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `cliente_id` (`cliente_id`),
+  CONSTRAINT `historial_cambios_clientes_ibfk_1` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`idCliente`) ON DELETE CASCADE
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `historial_cambios_clientes`
+--
+
+LOCK TABLES `historial_cambios_clientes` WRITE;
+/*!40000 ALTER TABLE `historial_cambios_clientes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `historial_cambios_clientes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `historial_cambios_ofertas`
+--
+
+DROP TABLE IF EXISTS `historial_cambios_ofertas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `historial_cambios_ofertas` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `oferta_id` int NOT NULL,
+  `codigo_oferta` varchar(50) NOT NULL,
+  `datos_anteriores` json NOT NULL,
+  `datos_nuevos` json NOT NULL,
+  `fecha_cambio` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `oferta_id` (`oferta_id`),
+  CONSTRAINT `historial_cambios_ofertas_ibfk_1` FOREIGN KEY (`oferta_id`) REFERENCES `ofertas` (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `historial_cambios_ofertas`
+--
+
+LOCK TABLES `historial_cambios_ofertas` WRITE;
+/*!40000 ALTER TABLE `historial_cambios_ofertas` DISABLE KEYS */;
+INSERT INTO `historial_cambios_ofertas` VALUES (1,2,'OGR-00002','{\"id\": 2, \"estado\": \"Activa\", \"descuento\": \"1.00\", \"fecha_fin\": \"2025-02-28T01:47:00.000Z\", \"fecha_inicio\": \"2025-02-28T01:47:00.000Z\", \"codigo_oferta\": \"OGR-00002\", \"inventario_id\": 1}','{\"descuento\": 1, \"fecha_fin\": \"2025-02-28 02:47:00\", \"fecha_inicio\": \"2025-02-28 01:47:00\", \"inventario_id\": 1}','2025-02-27 19:47:27'),(2,2,'OGR-00002','{\"id\": 2, \"estado\": \"Activa\", \"descuento\": \"1.00\", \"fecha_fin\": \"2025-02-28T08:47:00.000Z\", \"fecha_inicio\": \"2025-02-28T07:47:00.000Z\", \"codigo_oferta\": \"OGR-00002\", \"inventario_id\": 1}','{\"descuento\": 2, \"fecha_fin\": \"2025-02-28 08:47:00\", \"fecha_inicio\": \"2025-02-28 07:47:00\", \"inventario_id\": 1}','2025-02-27 19:47:39');
+/*!40000 ALTER TABLE `historial_cambios_ofertas` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `historial_cambios_traslados`
+--
+
+DROP TABLE IF EXISTS `historial_cambios_traslados`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `historial_cambios_traslados` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `traslado_id` int NOT NULL,
+  `codigo_traslado` varchar(50) NOT NULL,
+  `datos_anteriores` json NOT NULL,
+  `datos_nuevos` json NOT NULL,
+  `fecha_cambio` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `traslado_id` (`traslado_id`),
+  CONSTRAINT `historial_cambios_traslados_ibfk_1` FOREIGN KEY (`traslado_id`) REFERENCES `traslados` (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `historial_cambios_traslados`
+--
+
+LOCK TABLES `historial_cambios_traslados` WRITE;
+/*!40000 ALTER TABLE `historial_cambios_traslados` DISABLE KEYS */;
+INSERT INTO `historial_cambios_traslados` VALUES (1,17,'TGR-00001','{\"estado\": \"Pendiente\", \"productos\": [{\"cantidad\": 2, \"codigo_inventario\": \"2323\"}]}','{\"productos\": [{\"cantidadAntes\": 2, \"cantidadDespues\": 5, \"codigo_inventario\": \"2323\"}]}','2025-02-27 14:17:14');
+/*!40000 ALTER TABLE `historial_cambios_traslados` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `historial_cambios_ventas`
+--
+
+DROP TABLE IF EXISTS `historial_cambios_ventas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `historial_cambios_ventas` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `venta_id` int NOT NULL,
+  `codigo_venta` varchar(50) NOT NULL,
+  `fecha_cambio` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `datos_anteriores` json NOT NULL,
+  `datos_nuevos` json NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `venta_id` (`venta_id`),
+  CONSTRAINT `historial_cambios_ventas_ibfk_1` FOREIGN KEY (`venta_id`) REFERENCES `ventas` (`idVentas`) ON DELETE CASCADE
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `historial_cambios_ventas`
+--
+
+LOCK TABLES `historial_cambios_ventas` WRITE;
+/*!40000 ALTER TABLE `historial_cambios_ventas` DISABLE KEYS */;
+/*!40000 ALTER TABLE `historial_cambios_ventas` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `inventario`
+--
+
+DROP TABLE IF EXISTS `inventario`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `inventario` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
   `codigo` varchar(50) NOT NULL,
   `imagen` varchar(255) NOT NULL,
   `nombre` varchar(100) NOT NULL,
-  `descripcion` text DEFAULT NULL,
+  `descripcion` text,
   `numero_motor` varchar(50) DEFAULT NULL,
   `numero_chasis` varchar(50) DEFAULT NULL,
-  `categoria_id` int(11) NOT NULL,
-  `sucursal_id` int(11) NOT NULL,
+  `categoria_id` int NOT NULL,
+  `sucursal_id` int NOT NULL,
   `costo` decimal(10,2) NOT NULL,
   `credito` decimal(10,2) DEFAULT NULL,
   `precio_venta` decimal(10,2) NOT NULL,
-  `stock_existencia` int(11) NOT NULL,
-  `stock_minimo` int(11) NOT NULL,
+  `stock_existencia` int NOT NULL,
+  `stock_minimo` int NOT NULL,
   `fecha_ingreso` date NOT NULL,
   `fecha_reingreso` date DEFAULT NULL,
   `numero_poliza` varchar(50) DEFAULT NULL,
   `numero_lote` varchar(50) DEFAULT NULL,
-  `proveedor_id` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `proveedor_id` int NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `codigo` (`codigo`),
+  KEY `categoria_id` (`categoria_id`),
+  KEY `sucursal_id` (`sucursal_id`),
+  KEY `proveedor_id` (`proveedor_id`),
+  CONSTRAINT `inventario_ibfk_1` FOREIGN KEY (`categoria_id`) REFERENCES `categoria` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `inventario_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursal` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `inventario_ibfk_3` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`) ON DELETE CASCADE
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `inventario`
+-- Dumping data for table `inventario`
 --
 
-INSERT INTO `inventario` (`id`, `codigo`, `imagen`, `nombre`, `descripcion`, `numero_motor`, `numero_chasis`, `categoria_id`, `sucursal_id`, `costo`, `credito`, `precio_venta`, `stock_existencia`, `stock_minimo`, `fecha_ingreso`, `fecha_reingreso`, `numero_poliza`, `numero_lote`, `proveedor_id`) VALUES
-(2, '1212', '/uploads/1739903246807.png', 'motor 1 editado', 'es un motor poderoso', '12', '2', 1, 1, 350.00, 12.00, 300.00, 2, 10, '2025-02-18', '2025-02-18', '111122223333', '3', 1);
-
--- --------------------------------------------------------
+LOCK TABLES `inventario` WRITE;
+/*!40000 ALTER TABLE `inventario` DISABLE KEYS */;
+INSERT INTO `inventario` VALUES (1,'2323','/uploads/1740687336551.png','cocacola','es bebida','12121212','121212',1,3,290.00,121.00,300.00,8,5,'2025-02-27','2025-02-27','1','2',2);
+/*!40000 ALTER TABLE `inventario` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `ofertas`
+-- Table structure for table `ofertas`
 --
 
+DROP TABLE IF EXISTS `ofertas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ofertas` (
-  `id` int(11) NOT NULL,
-  `inventario_id` int(11) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
+  `inventario_id` int NOT NULL,
   `descuento` decimal(5,2) NOT NULL,
-  `fecha_inicio` date NOT NULL,
-  `fecha_fin` date NOT NULL,
-  `estado` enum('Activa','Inactiva') NOT NULL DEFAULT 'Activa'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `fecha_inicio` datetime NOT NULL,
+  `fecha_fin` datetime NOT NULL,
+  `estado` enum('Activa','Inactiva') NOT NULL DEFAULT 'Activa',
+  `codigo_oferta` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `codigo_oferta` (`codigo_oferta`),
+  KEY `inventario_id` (`inventario_id`),
+  CONSTRAINT `ofertas_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `ofertas`
+-- Dumping data for table `ofertas`
 --
 
-INSERT INTO `ofertas` (`id`, `inventario_id`, `descuento`, `fecha_inicio`, `fecha_fin`, `estado`) VALUES
-(1, 2, 1.00, '2025-02-19', '2025-02-20', 'Activa');
-
--- --------------------------------------------------------
+LOCK TABLES `ofertas` WRITE;
+/*!40000 ALTER TABLE `ofertas` DISABLE KEYS */;
+INSERT INTO `ofertas` VALUES (1,1,1.00,'2025-02-27 14:19:00','2025-02-27 14:19:00','Activa','OGR-00001'),(2,1,2.00,'2025-02-28 07:47:00','2025-02-28 08:47:00','Activa','OGR-00002');
+/*!40000 ALTER TABLE `ofertas` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `proveedores`
+-- Table structure for table `proveedores`
 --
 
+DROP TABLE IF EXISTS `proveedores`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `proveedores` (
-  `id` int(11) NOT NULL,
-  `nombre` varchar(150) NOT NULL,
-  `direccion` text NOT NULL,
-  `contacto` varchar(20) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
+  `tipo_proveedor` enum('Natural','Jurídico') NOT NULL,
+  `nombre_comercial` varchar(150) NOT NULL,
   `correo` varchar(100) NOT NULL,
-  `clasificacion` varchar(50) DEFAULT NULL,
-  `tipo_persona` enum('Natural','Jurídica') NOT NULL,
-  `numero_factura_compra` varchar(50) DEFAULT NULL,
-  `ley_tributaria` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `direccion` text NOT NULL,
+  `telefono` varchar(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `correo` (`correo`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `proveedores`
+-- Dumping data for table `proveedores`
 --
 
-INSERT INTO `proveedores` (`id`, `nombre`, `direccion`, `contacto`, `correo`, `clasificacion`, `tipo_persona`, `numero_factura_compra`, `ley_tributaria`) VALUES
-(1, 'Proveedor A', 'Calle 123, Ciudad A', '1234567890', 'proveedorA@example.com', 'Mayorista', 'Jurídica', '1234567890', 'Ley Tributaria 123'),
-(2, 'Alvin Rosales H', 'col san sivar sv', '1313-1313', 'alvinedit@gmail.com', 'pequeña', 'Natural', '121212', 'contribuyente');
-
--- --------------------------------------------------------
+LOCK TABLES `proveedores` WRITE;
+/*!40000 ALTER TABLE `proveedores` DISABLE KEYS */;
+INSERT INTO `proveedores` VALUES (1,'Natural','Gobierno SV','mauricio@domain.com','Col. Roba','12121212'),(2,'Jurídico','Comercial buena ventura','ventua@gmail.com','Venturas del cielo col.','12121212');
+/*!40000 ALTER TABLE `proveedores` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `sucursal`
+-- Table structure for table `proveedores_juridicos`
 --
 
+DROP TABLE IF EXISTS `proveedores_juridicos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `proveedores_juridicos` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `proveedor_id` int NOT NULL,
+  `razon_social` varchar(200) NOT NULL,
+  `nit` varchar(200) NOT NULL,
+  `nrc` text NOT NULL,
+  `giro` varchar(20) NOT NULL,
+  `correspondencia` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `proveedor_id` (`proveedor_id`),
+  CONSTRAINT `proveedores_juridicos_ibfk_1` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `proveedores_juridicos`
+--
+
+LOCK TABLES `proveedores_juridicos` WRITE;
+/*!40000 ALTER TABLE `proveedores_juridicos` DISABLE KEYS */;
+INSERT INTO `proveedores_juridicos` VALUES (1,2,'Comercial de CA de CV','1212-121212-121-2','12121212111','Servicios','No tiene');
+/*!40000 ALTER TABLE `proveedores_juridicos` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `proveedores_naturales`
+--
+
+DROP TABLE IF EXISTS `proveedores_naturales`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `proveedores_naturales` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `proveedor_id` int NOT NULL,
+  `nombre_propietario` varchar(200) NOT NULL,
+  `dui` varchar(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `proveedor_id` (`proveedor_id`),
+  CONSTRAINT `proveedores_naturales_ibfk_1` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `proveedores_naturales`
+--
+
+LOCK TABLES `proveedores_naturales` WRITE;
+/*!40000 ALTER TABLE `proveedores_naturales` DISABLE KEYS */;
+INSERT INTO `proveedores_naturales` VALUES (1,1,'Mauricio Funes','12345679-9');
+/*!40000 ALTER TABLE `proveedores_naturales` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sucursal`
+--
+
+DROP TABLE IF EXISTS `sucursal`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sucursal` (
-  `id` int(11) NOT NULL,
-  `codigo` varchar(50) NOT NULL,
-  `nombre` varchar(50) NOT NULL,
-  `pais` varchar(50) NOT NULL,
-  `departamento` varchar(50) NOT NULL,
-  `ciudad` varchar(50) NOT NULL,
-  `estado` enum('Activo','Inactivo') NOT NULL DEFAULT 'Activo'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `nombre` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `pais` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `departamento` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `ciudad` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `estado` enum('Activo','Inactivo') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Activo',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `codigo` (`codigo`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `sucursal`
+-- Dumping data for table `sucursal`
 --
 
-INSERT INTO `sucursal` (`id`, `codigo`, `nombre`, `pais`, `departamento`, `ciudad`, `estado`) VALUES
-(1, 'S001', 'Sucursal Principal', 'Colombia', 'Bogotá', 'Bogotá', 'Activo'),
-(2, '3344', 'Sucursal poderosa', 'El Salvador', 'Ahuachapán', 'Apaneca', 'Activo');
-
--- --------------------------------------------------------
+LOCK TABLES `sucursal` WRITE;
+/*!40000 ALTER TABLE `sucursal` DISABLE KEYS */;
+INSERT INTO `sucursal` VALUES (1,'S001','Sucursal Principal','Colombia','Bogotá','Bogotá','Activo'),(2,'3344','Sucursal poderosa','El Salvador','Ahuachapán','Apaneca','Inactivo'),(3,'500','santiago','El Salvador','Usulután','Santiago de María','Activo');
+/*!40000 ALTER TABLE `sucursal` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `traslados`
+-- Table structure for table `traslados`
 --
 
+DROP TABLE IF EXISTS `traslados`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `traslados` (
-  `id` int(11) NOT NULL,
-  `codigo_traslado` varchar(50) NOT NULL,
-  `codigo_inventario` varchar(50) NOT NULL,
-  `codigo_sucursal_origen` varchar(50) NOT NULL,
-  `codigo_sucursal_destino` varchar(50) NOT NULL,
-  `codigo_empleado` varchar(20) NOT NULL,
-  `cantidad` int(11) NOT NULL,
-  `fecha_traslado` datetime NOT NULL DEFAULT current_timestamp(),
-  `estado` enum('Pendiente','Completado','Cancelado') NOT NULL DEFAULT 'Pendiente'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `codigo_traslado` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `codigo_sucursal_origen` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `codigo_sucursal_destino` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `codigo_empleado` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `fecha_traslado` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `estado` enum('Pendiente','Completado','Cancelado') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pendiente',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `codigo_traslado` (`codigo_traslado`),
+  KEY `codigo_sucursal_origen` (`codigo_sucursal_origen`),
+  KEY `codigo_sucursal_destino` (`codigo_sucursal_destino`),
+  CONSTRAINT `traslados_ibfk_2` FOREIGN KEY (`codigo_sucursal_origen`) REFERENCES `sucursal` (`codigo`),
+  CONSTRAINT `traslados_ibfk_3` FOREIGN KEY (`codigo_sucursal_destino`) REFERENCES `sucursal` (`codigo`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `traslados`
+-- Dumping data for table `traslados`
 --
 
-INSERT INTO `traslados` (`id`, `codigo_traslado`, `codigo_inventario`, `codigo_sucursal_origen`, `codigo_sucursal_destino`, `codigo_empleado`, `cantidad`, `fecha_traslado`, `estado`) VALUES
-(1, 'T1', '1212', 'S001', 'S001', 'EMP-0002', 1, '2025-02-19 12:30:02', 'Pendiente');
-
--- --------------------------------------------------------
+LOCK TABLES `traslados` WRITE;
+/*!40000 ALTER TABLE `traslados` DISABLE KEYS */;
+INSERT INTO `traslados` VALUES (17,'TGR-00001','S001','500','EMP-0003','2025-02-27 14:16:52','Pendiente');
+/*!40000 ALTER TABLE `traslados` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `usuarios`
+-- Table structure for table `usuarios`
 --
 
+DROP TABLE IF EXISTS `usuarios`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `usuarios` (
-  `id` int(11) NOT NULL,
-  `empleado_id` int(11) DEFAULT NULL,
-  `nombre_completo` varchar(255) NOT NULL,
-  `usuario` varchar(50) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `tipo_cuenta` varchar(50) NOT NULL,
-  `cargo` varchar(50) NOT NULL,
-  `fecha_creacion` datetime NOT NULL DEFAULT current_timestamp(),
-  `fecha_actualizacion` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `empleado_id` int DEFAULT NULL,
+  `nombre_completo` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `usuario` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `tipo_cuenta` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `cargo` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `fecha_creacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fecha_actualizacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_empleado_id` (`empleado_id`),
+  CONSTRAINT `fk_empleado_id` FOREIGN KEY (`empleado_id`) REFERENCES `empleados` (`id`)
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `usuarios`
+-- Dumping data for table `usuarios`
 --
 
-INSERT INTO `usuarios` (`id`, `empleado_id`, `nombre_completo`, `usuario`, `password`, `tipo_cuenta`, `cargo`, `fecha_creacion`, `fecha_actualizacion`) VALUES
-(1, NULL, 'Super Usuario', 'root', '123', 'Root', 'Administrador', '2025-02-21 14:35:00', '2025-02-21 14:35:44');
-
--- --------------------------------------------------------
+LOCK TABLES `usuarios` WRITE;
+/*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
+INSERT INTO `usuarios` VALUES (1,NULL,'Super Usuario','root','123','Root','Administrador','2025-02-21 14:35:00','2025-02-21 14:35:44'),(9,11,'Alvin Rosales','Alvin','$2b$12$Avr3J.sRlruCYBKOeBdAlO/Ztgivb6EVyPJ8OtxlcytdICNsGWb.G','Normal','Bodeguero','2025-02-27 14:53:59','2025-02-27 14:54:48');
+/*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
--- Estructura de tabla para la tabla `ventas`
+-- Table structure for table `ventas`
 --
 
+DROP TABLE IF EXISTS `ventas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ventas` (
-  `idVentas` int(11) NOT NULL,
-  `fecha_venta` datetime NOT NULL DEFAULT current_timestamp(),
-  `cliente_id` int(11) DEFAULT NULL,
+  `idVentas` int NOT NULL AUTO_INCREMENT,
+  `codigo_venta` varchar(50) NOT NULL,
+  `fecha_venta` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `cliente_id` int DEFAULT NULL,
+  `empleado_id` int NOT NULL,
   `tipo_factura` enum('Consumidor Final','Crédito Fiscal','Ticket') NOT NULL,
   `metodo_pago` enum('Efectivo','Tarjeta de Crédito','Transferencia Bancaria') NOT NULL,
   `total` decimal(10,2) NOT NULL,
-  `descripcion_compra` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `descripcion_compra` text,
+  `factura` varchar(100) DEFAULT NULL,
+  `comprobante_credito_fiscal` varchar(100) DEFAULT NULL,
+  `factura_exportacion` varchar(100) DEFAULT NULL,
+  `nota_credito` varchar(100) DEFAULT NULL,
+  `nota_debito` varchar(100) DEFAULT NULL,
+  `nota_remision` varchar(100) DEFAULT NULL,
+  `comprobante_liquidacion` varchar(100) DEFAULT NULL,
+  `comprobante_retencion` varchar(100) DEFAULT NULL,
+  `documento_contable_liquidacion` varchar(100) DEFAULT NULL,
+  `comprobante_donacion` varchar(100) DEFAULT NULL,
+  `factura_sujeto_excluido` varchar(100) DEFAULT NULL,
+  `descuento` decimal(5,2) DEFAULT '0.00',
+  PRIMARY KEY (`idVentas`),
+  UNIQUE KEY `codigo_venta` (`codigo_venta`),
+  KEY `cliente_id` (`cliente_id`),
+  KEY `empleado_id` (`empleado_id`),
+  CONSTRAINT `ventas_ibfk_1` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`idCliente`) ON DELETE SET NULL,
+  CONSTRAINT `ventas_ibfk_2` FOREIGN KEY (`empleado_id`) REFERENCES `empleados` (`id`) ON DELETE RESTRICT
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Volcado de datos para la tabla `ventas`
+-- Dumping data for table `ventas`
 --
 
-INSERT INTO `ventas` (`idVentas`, `fecha_venta`, `cliente_id`, `tipo_factura`, `metodo_pago`, `total`, `descripcion_compra`) VALUES
-(1, '2025-02-17 16:41:24', 1, 'Consumidor Final', 'Efectivo', 1200.00, 'Venta de motocicleta'),
-(2, '2025-02-17 00:00:00', 1, 'Consumidor Final', 'Tarjeta de Crédito', 1342.44, 'ninguna'),
-(3, '2025-02-18 10:29:38', 1, 'Consumidor Final', 'Efectivo', 1200.00, 'Venta de motocicleta'),
-(4, '2025-02-18 00:00:00', 1, 'Ticket', 'Efectivo', 3691.71, 'ninguna'),
-(5, '2025-02-19 00:00:00', 1, 'Crédito Fiscal', 'Efectivo', 335.61, 'ninguna nota'),
-(6, '2025-02-19 00:00:00', 1, 'Ticket', 'Efectivo', 335.61, 'ninguna nota');
+LOCK TABLES `ventas` WRITE;
+/*!40000 ALTER TABLE `ventas` DISABLE KEYS */;
+INSERT INTO `ventas` VALUES (14,'VGR-00001','2025-02-27 00:00:00',18,11,'Consumidor Final','Efectivo',339.00,'ninguna',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0.00),(15,'VGR-00002','2025-02-27 00:00:00',18,11,'Consumidor Final','Tarjeta de Crédito',1006.83,'ninguna',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1.00);
+/*!40000 ALTER TABLE `ventas` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
---
--- Índices para tablas volcadas
---
-
---
--- Indices de la tabla `categoria`
---
-ALTER TABLE `categoria`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `nombre` (`nombre`);
-
---
--- Indices de la tabla `clientes`
---
-ALTER TABLE `clientes`
-  ADD PRIMARY KEY (`idCliente`);
-
---
--- Indices de la tabla `detalle_ventas`
---
-ALTER TABLE `detalle_ventas`
-  ADD PRIMARY KEY (`idDetalle`),
-  ADD KEY `idVentas` (`idVentas`),
-  ADD KEY `codigo_producto` (`codigo_producto`);
-
---
--- Indices de la tabla `empleados`
---
-ALTER TABLE `empleados`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `historial_ajustes`
---
-ALTER TABLE `historial_ajustes`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `inventario`
---
-ALTER TABLE `inventario`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `codigo` (`codigo`),
-  ADD KEY `categoria_id` (`categoria_id`),
-  ADD KEY `sucursal_id` (`sucursal_id`),
-  ADD KEY `proveedor_id` (`proveedor_id`);
-
---
--- Indices de la tabla `ofertas`
---
-ALTER TABLE `ofertas`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `inventario_id` (`inventario_id`);
-
---
--- Indices de la tabla `proveedores`
---
-ALTER TABLE `proveedores`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `correo` (`correo`);
-
---
--- Indices de la tabla `sucursal`
---
-ALTER TABLE `sucursal`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `codigo` (`codigo`);
-
---
--- Indices de la tabla `traslados`
---
-ALTER TABLE `traslados`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `codigo_traslado` (`codigo_traslado`),
-  ADD KEY `codigo_inventario` (`codigo_inventario`),
-  ADD KEY `codigo_sucursal_origen` (`codigo_sucursal_origen`),
-  ADD KEY `codigo_sucursal_destino` (`codigo_sucursal_destino`);
-
---
--- Indices de la tabla `usuarios`
---
-ALTER TABLE `usuarios`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_empleado_id` (`empleado_id`);
-
---
--- Indices de la tabla `ventas`
---
-ALTER TABLE `ventas`
-  ADD PRIMARY KEY (`idVentas`),
-  ADD KEY `cliente_id` (`cliente_id`);
-
---
--- AUTO_INCREMENT de las tablas volcadas
---
-
---
--- AUTO_INCREMENT de la tabla `categoria`
---
-ALTER TABLE `categoria`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT de la tabla `clientes`
---
-ALTER TABLE `clientes`
-  MODIFY `idCliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
-
---
--- AUTO_INCREMENT de la tabla `detalle_ventas`
---
-ALTER TABLE `detalle_ventas`
-  MODIFY `idDetalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
-
---
--- AUTO_INCREMENT de la tabla `empleados`
---
-ALTER TABLE `empleados`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
-
---
--- AUTO_INCREMENT de la tabla `historial_ajustes`
---
-ALTER TABLE `historial_ajustes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT de la tabla `inventario`
---
-ALTER TABLE `inventario`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT de la tabla `ofertas`
---
-ALTER TABLE `ofertas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT de la tabla `proveedores`
---
-ALTER TABLE `proveedores`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT de la tabla `sucursal`
---
-ALTER TABLE `sucursal`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT de la tabla `traslados`
---
-ALTER TABLE `traslados`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT de la tabla `usuarios`
---
-ALTER TABLE `usuarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
-
---
--- AUTO_INCREMENT de la tabla `ventas`
---
-ALTER TABLE `ventas`
-  MODIFY `idVentas` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
-
---
--- Restricciones para tablas volcadas
---
-
---
--- Filtros para la tabla `detalle_ventas`
---
-ALTER TABLE `detalle_ventas`
-  ADD CONSTRAINT `detalle_ventas_ibfk_1` FOREIGN KEY (`idVentas`) REFERENCES `ventas` (`idVentas`),
-  ADD CONSTRAINT `detalle_ventas_ibfk_2` FOREIGN KEY (`codigo_producto`) REFERENCES `inventario` (`codigo`);
-
---
--- Filtros para la tabla `inventario`
---
-ALTER TABLE `inventario`
-  ADD CONSTRAINT `inventario_ibfk_1` FOREIGN KEY (`categoria_id`) REFERENCES `categoria` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `inventario_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursal` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `inventario_ibfk_3` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `ofertas`
---
-ALTER TABLE `ofertas`
-  ADD CONSTRAINT `ofertas_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
-
---
--- Filtros para la tabla `traslados`
---
-ALTER TABLE `traslados`
-  ADD CONSTRAINT `traslados_ibfk_1` FOREIGN KEY (`codigo_inventario`) REFERENCES `inventario` (`codigo`),
-  ADD CONSTRAINT `traslados_ibfk_2` FOREIGN KEY (`codigo_sucursal_origen`) REFERENCES `sucursal` (`codigo`),
-  ADD CONSTRAINT `traslados_ibfk_3` FOREIGN KEY (`codigo_sucursal_destino`) REFERENCES `sucursal` (`codigo`);
-
---
--- Filtros para la tabla `usuarios`
---
-ALTER TABLE `usuarios`
-  ADD CONSTRAINT `fk_empleado_id` FOREIGN KEY (`empleado_id`) REFERENCES `empleados` (`id`);
-
---
--- Filtros para la tabla `ventas`
---
-ALTER TABLE `ventas`
-  ADD CONSTRAINT `ventas_ibfk_1` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`idCliente`);
-COMMIT;
-
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2025-02-27 20:25:53
