@@ -13,54 +13,39 @@ class EditarClienteScreen extends StatefulWidget {
 class _EditarClienteScreenState extends State<EditarClienteScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _direccionController;
-  late TextEditingController _registroContribuyenteController;
-  late TextEditingController _representanteLegalController;
-  late TextEditingController _direccionRepresentanteController;
-  late TextEditingController _razonSocialController;
   late TextEditingController _emailController;
   late TextEditingController _telefonoController;
-  late String _tipoCliente;
 
   @override
   void initState() {
     super.initState();
     _direccionController =
         TextEditingController(text: widget.cliente['direccion'] ?? '');
-    _registroContribuyenteController = TextEditingController(
-        text: widget.cliente['registro_contribuyente'] ?? '');
-    _representanteLegalController = TextEditingController(
-        text: widget.cliente['representante_legal'] ?? '');
-    _direccionRepresentanteController = TextEditingController(
-        text: widget.cliente['direccion_representante'] ?? '');
-    _razonSocialController =
-        TextEditingController(text: widget.cliente['razon_social'] ?? '');
     _emailController = TextEditingController(text: widget.cliente['email']);
     _telefonoController =
         TextEditingController(text: widget.cliente['telefono']);
-    _tipoCliente = widget.cliente['tipo_cliente'];
+  }
+
+  String? _validarTelefono(String? value) {
+    if (value == null || value.isEmpty) return "Requerido";
+    final regex = RegExp(r'^(\+503\s?)?\d{4}-?\d{4}$');
+    return regex.hasMatch(value)
+        ? null
+        : "Formato inválido (ej. 1234-5678 o +503 12345678)";
+  }
+
+  String? _validarEmail(String? value) {
+    if (value == null || value.isEmpty) return "Requerido";
+    final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return regex.hasMatch(value)
+        ? null
+        : "Formato inválido (ej. example@domain.com)";
   }
 
   void _guardarCambios() async {
     if (_formKey.currentState!.validate()) {
       final datosActualizados = {
-        'direccion': _direccionController.text.isNotEmpty
-            ? _direccionController.text
-            : null,
-        'tipo_cliente': _tipoCliente,
-        'registro_contribuyente':
-            _registroContribuyenteController.text.isNotEmpty
-                ? _registroContribuyenteController.text
-                : null,
-        'representante_legal': _representanteLegalController.text.isNotEmpty
-            ? _representanteLegalController.text
-            : null,
-        'direccion_representante':
-            _direccionRepresentanteController.text.isNotEmpty
-                ? _direccionRepresentanteController.text
-                : null,
-        'razon_social': _razonSocialController.text.isNotEmpty
-            ? _razonSocialController.text
-            : null,
+        'direccion': _direccionController.text,
         'email': _emailController.text,
         'telefono': _telefonoController.text,
       };
@@ -95,76 +80,27 @@ class _EditarClienteScreenState extends State<EditarClienteScreen> {
               SizedBox(height: 15),
               Text("Nombre: ${widget.cliente['nombre'] ?? 'N/A'}"),
               SizedBox(height: 15),
-              Text("DUI: ${widget.cliente['dui'] ?? 'N/A'}"),
-              SizedBox(height: 15),
-              Text("NIT: ${widget.cliente['nit'] ?? 'N/A'}"),
-              SizedBox(height: 15),
-              DropdownButtonFormField<String>(
-                value: _tipoCliente,
-                decoration: InputDecoration(
-                    labelText: 'Tipo de Cliente', border: OutlineInputBorder()),
-                items: [
-                  'Consumidor Final',
-                  'Contribuyente Jurídico',
-                  'Natural',
-                  'ONG',
-                  'Sujeto Excluido'
-                ]
-                    .map((tipo) =>
-                        DropdownMenuItem(value: tipo, child: Text(tipo)))
-                    .toList(),
-                onChanged: (value) => setState(() => _tipoCliente = value!),
-              ),
+              Text("Tipo: ${widget.cliente['tipo_cliente'] ?? 'N/A'}"),
               SizedBox(height: 15),
               TextFormField(
                 controller: _direccionController,
                 decoration: InputDecoration(
                     labelText: 'Dirección', border: OutlineInputBorder()),
+                maxLength: 200,
               ),
-              SizedBox(height: 15),
-              if (_tipoCliente == "Consumidor Final")
-                TextFormField(
-                  controller: _registroContribuyenteController,
-                  decoration: InputDecoration(
-                      labelText: 'Registro Contribuyente (NCR)',
-                      border: OutlineInputBorder()),
-                ),
-              SizedBox(height: 15),
-              if (_tipoCliente == "Contribuyente Jurídico") ...[
-                TextFormField(
-                  controller: _representanteLegalController,
-                  decoration: InputDecoration(
-                      labelText: 'Representante Legal',
-                      border: OutlineInputBorder()),
-                ),
-                SizedBox(height: 15),
-                TextFormField(
-                  controller: _direccionRepresentanteController,
-                  decoration: InputDecoration(
-                      labelText: 'Dirección del Representante',
-                      border: OutlineInputBorder()),
-                ),
-              ],
-              SizedBox(height: 15),
-              if (_tipoCliente == "ONG")
-                TextFormField(
-                  controller: _razonSocialController,
-                  decoration: InputDecoration(
-                      labelText: 'Razón Social', border: OutlineInputBorder()),
-                ),
               SizedBox(height: 15),
               TextFormField(
                 controller: _emailController,
                 decoration: InputDecoration(
                     labelText: 'Email', border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? "Requerido" : null,
+                validator: _validarEmail,
               ),
               SizedBox(height: 15),
               TextFormField(
                 controller: _telefonoController,
                 decoration: InputDecoration(
                     labelText: 'Teléfono', border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? "Requerido" : null,
+                validator: _validarTelefono,
               ),
             ],
           ),

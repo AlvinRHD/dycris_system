@@ -8,6 +8,8 @@ void main() {
 }
 
 class HistorialApp extends StatelessWidget {
+  const HistorialApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -18,6 +20,8 @@ class HistorialApp extends StatelessWidget {
 }
 
 class HistorialScreen extends StatefulWidget {
+  const HistorialScreen({super.key});
+
   @override
   _HistorialScreenState createState() => _HistorialScreenState();
 }
@@ -26,7 +30,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
   List<Map<String, dynamic>> _historial = [];
   List<Map<String, dynamic>> _filteredHistorial = [];
   bool _isLoading = true;
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -49,8 +53,10 @@ class _HistorialScreenState extends State<HistorialScreen> {
 
       if (response.statusCode == 200) {
         setState(() {
-          _historial = List<Map<String, dynamic>>.from(json.decode(response.body));
-          _filteredHistorial = _historial; // Inicialmente, todos los datos visibles
+          _historial =
+              List<Map<String, dynamic>>.from(json.decode(response.body));
+          _filteredHistorial =
+              _historial; // Inicialmente, todos los datos visibles
           _isLoading = false;
         });
       } else {
@@ -82,7 +88,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
         String nombre = item["nombre"].toLowerCase();
         String descripcion = item["descripcion"].toLowerCase();
         String fecha = _formatDateTime(item["fecha"]).toLowerCase();
-        return nombre.contains(query) || descripcion.contains(query) || fecha.contains(query);
+        return nombre.contains(query) ||
+            descripcion.contains(query) ||
+            fecha.contains(query);
       }).toList();
     });
   }
@@ -92,7 +100,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
     return Scaffold(
       backgroundColor: Color(0xFFFAF0F8),
       appBar: AppBar(
-        title: Text("Historial de Ajustes", style: TextStyle(color: Colors.black)),
+        title:
+            Text("Historial de Ajustes", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.black),
@@ -122,24 +131,49 @@ class _HistorialScreenState extends State<HistorialScreen> {
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
                         columnSpacing: 20,
-                        headingRowColor: MaterialStateColor.resolveWith((states) => Colors.white),
-                        dataRowColor: MaterialStateColor.resolveWith((states) => Colors.white),
+                        headingRowColor: WidgetStateColor.resolveWith(
+                            (states) => Colors.white),
+                        dataRowColor: WidgetStateColor.resolveWith(
+                            (states) => Colors.white),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
-                            BoxShadow(color: Colors.black12, blurRadius: 4, spreadRadius: 2)
+                            BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                spreadRadius: 2)
                           ],
                         ),
                         columns: [
-                          DataColumn(label: Text("ID", style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text("Código", style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text("Nombre", style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text("Descripción", style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text("Precio", style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text("Fecha", style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text("Stock", style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text("Motivo", style: TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text("ID",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text("Código",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text("Nombre",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text("Descripción",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text("Precio",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text("Fecha",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text("Motivo",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
                         ],
                         rows: _filteredHistorial.map((item) {
                           return DataRow(cells: [
@@ -148,8 +182,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
                             DataCell(Text(item["nombre"])),
                             DataCell(Text(item["descripcion"])),
                             DataCell(Text("\$${item["precio"]}")),
-                            DataCell(Text(_formatDateTime(item["fecha"]))), // Formatear fecha y hora
-                            DataCell(Text(item["stock"].toString())),
+                            DataCell(Text(_formatDateTime(
+                                item["fecha"]))), // Formatear fecha y hora
                             DataCell(Text(item["motivo"])),
                           ]);
                         }).toList(),

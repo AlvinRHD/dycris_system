@@ -28,6 +28,7 @@ router.get("/inventario", async (req, res) => {
   try {
     const tipo = req.query.tipo;
     let query = "SELECT * FROM inventario";
+
     if (tipo === "detallado") {
       query = `
         SELECT 
@@ -35,12 +36,12 @@ router.get("/inventario", async (req, res) => {
           i.codigo,
           i.imagen,
           i.nombre AS nombre,
-          i.descripcion,
+          i.descripcion AS descripcion,
           i.numero_motor,
           i.numero_chasis,
           c.nombre AS categoria,
           s.nombre AS sucursal,
-          p.nombre AS proveedores,
+          p.nombre_comercial AS proveedores,
           i.costo,
           i.credito,
           i.precio_venta,
@@ -55,7 +56,25 @@ router.get("/inventario", async (req, res) => {
         LEFT JOIN sucursal s ON i.sucursal_id = s.id
         LEFT JOIN proveedores p ON i.proveedor_id = p.id;
       `;
+    } else if (tipo === "resumido") {
+      query = `
+        SELECT 
+          i.nombre AS nombre,
+          i.descripcion AS descripcion,
+          i.costo,
+          i.precio_venta,
+          c.nombre AS categoria,
+          s.nombre AS sucursal,
+          p.nombre_comercial AS proveedores,
+          SUM(i.stock_existencia) AS stock_total
+        FROM inventario i
+        LEFT JOIN categoria c ON i.categoria_id = c.id
+        LEFT JOIN sucursal s ON i.sucursal_id = s.id
+        LEFT JOIN proveedores p ON i.proveedor_id = p.id
+        GROUP BY i.nombre, i.descripcion, c.nombre, s.nombre, p.nombre_comercial, i.costo, i.precio_venta;
+      `;
     }
+
     const [results] = await req.db.query(query);
     res.json(results);
   } catch (err) {
@@ -66,56 +85,78 @@ router.get("/inventario", async (req, res) => {
   }
 });
 
-// GET: Obtener producto por ID
-router.get("/inventario/:id", async (req, res) => {
+
+
+// GET: Obtener detalles de un producto por nombre y descripción
+router.get("/inventario/detalles", async (req, res) => {
   try {
-    const { id } = req.params;
-    const [results] = await req.db.query("SELECT * FROM inventario WHERE id = ?", [id]);
-    if (results.length === 0) {
-      return res.status(404).json({ message: "Producto no encontrado" });
+    const { nombre, descripcion } = req.query;
+    if (!nombre || !descripcion) {
+      return res.status(400).json({ message: "Faltan parámetros requeridos" });
     }
-    res.json(results[0]);
+
+    let query = `
+      SELECT 
+        id,
+        codigo,
+        numero_motor, 
+        numero_chasis,
+        numero_poliza,
+        numero_lote,
+        imagen,
+        nombre,
+        descripcion,
+        stock_existencia
+      FROM inventario 
+      WHERE nombre = ? AND descripcion = ?
+    `;
+    const params = [nombre, descripcion];
+
+    const [results] = await req.db.query(query, params);
+    res.json(results);
   } catch (err) {
     res.status(500).json({
-      message: "Error al obtener producto",
+      message: "Error al obtener detalles del producto",
       error: err.message,
     });
   }
-});
+}) 
 
-// PUT: Actualizar producto por ID e insertar en historial
-router.put("/inventario/:id", async (req, res) => {
-  const { id } = req.params;
-  const { nombre, descripcion, precio_venta, stock_existencia, motivo, imagen } = req.body;
+// PUT: Actualizar productos por nombre y descripción e insertar en historial
+router.put("/inventario/edit", async (req, res) => {
+  const { nombre, descripcion, precio_venta,  motivo, imagen } = req.body;
   const connection = await req.db.getConnection();
   try {
     await connection.beginTransaction();
-    // Verificar si el producto existe
-    const [rows] = await connection.query("SELECT * FROM inventario WHERE id = ?", [id]);
+    
+    // Verificar si existen productos con el mismo nombre y descripción
+    const [rows] = await connection.query("SELECT * FROM inventario WHERE nombre = ? AND descripcion = ?", [nombre, descripcion]);
     if (rows.length === 0) {
       await connection.rollback();
-      return res.status(404).json({ message: "Producto no encontrado" });
+      return res.status(404).json({ message: "No se encontraron productos con el nombre y descripción proporcionados" });
     }
-    const { codigo } = rows[0];
-    // Actualizar producto
+
+    // Actualizar todos los productos que coinciden
+    const codigo = rows[0].codigo; // Suponiendo que todos los productos tienen el mismo código
     await connection.query(
       `UPDATE inventario SET 
-        nombre = ?, 
-        descripcion = ?, 
         precio_venta = ?, 
-        stock_existencia = ?, 
         imagen = ? 
-      WHERE id = ?`,
-      [nombre, descripcion, precio_venta, stock_existencia, imagen, id]
+      WHERE nombre = ? AND descripcion = ?`,
+      [precio_venta,  imagen, nombre, descripcion]
     );
-    // Insertar registro en historial
-    await connection.query(
-      `INSERT INTO historial_ajustes (codigo, nombre, descripcion, precio, stock, motivo) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [codigo, nombre, descripcion, precio_venta, stock_existencia, motivo]
-    );
+
+    // Insertar registro en historial para cada producto actualizado
+    for (const row of rows) {
+      await connection.query(
+        `INSERT INTO historial_ajustes (codigo, nombre, descripcion, precio, motivo) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [row.codigo, nombre, descripcion, precio_venta,  motivo]
+      );
+    }
+
     await connection.commit();
-    res.json({ message: "Producto y historial actualizados correctamente" });
+    res.json({ message: "Productos y historial actualizados correctamente" });
   } catch (err) {
     await connection.rollback();
     res.status(500).json({
@@ -127,12 +168,14 @@ router.put("/inventario/:id", async (req, res) => {
   }
 });
 
+
+
 // POST: Insertar un nuevo producto en inventario
 router.post("/inventario", async (req, res) => {
   try {
     const {
       codigo,
-      imagen,
+      imagen, // Este campo es opcional
       nombre,
       descripcion,
       numero_motor,
@@ -169,33 +212,37 @@ router.post("/inventario", async (req, res) => {
       });
     }
 
-    const [result] = await req.db.query(
-      `INSERT INTO inventario 
-      (codigo, imagen, nombre, descripcion, numero_motor, numero_chasis, costo, credito, 
+    // Construir la consulta de inserción
+    const query = `
+      INSERT INTO inventario 
+      (codigo, ${imagen ? 'imagen,' : ''} nombre, descripcion, numero_motor, numero_chasis, costo, credito, 
       precio_venta, stock_existencia, stock_minimo, fecha_ingreso, fecha_reingreso, 
       numero_poliza, numero_lote, categoria_id, sucursal_id, proveedor_id) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        codigo,
-        imagen,
-        nombre,
-        descripcion,
-        numero_motor,
-        numero_chasis,
-        costo,
-        credito,
-        precio_venta,
-        stock_existencia,
-        stock_minimo,
-        fecha_ingreso,
-        fecha_reingreso,
-        numero_poliza,
-        numero_lote,
-        categoria_id,
-        sucursal_id,
-        proveedor_id,
-      ]
-    );
+      VALUES (?, ${imagen ? '?, ' : ''} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    // Crear un array de valores a insertar
+    const values = [
+      codigo,
+      ...(imagen ? [imagen] : []), // Agregar imagen solo si está presente
+      nombre,
+      descripcion,
+      numero_motor,
+      numero_chasis,
+      costo,
+      credito,
+      precio_venta,
+      stock_existencia,
+      stock_minimo,
+      fecha_ingreso,
+      fecha_reingreso,
+      numero_poliza,
+      numero_lote,
+      categoria_id,
+      sucursal_id,
+      proveedor_id,
+    ];
+
+    const [result] = await req.db.query(query, values);
 
     res.status(201).json({
       message: "Producto insertado exitosamente",
@@ -403,101 +450,272 @@ router.delete("/categoria/:id", async (req, res) => {
 /* ==================== RUTAS DE PROVEEDORES ==================== */
 
 // GET: Obtener todos los proveedores
+// GET: Obtener todos los proveedores
 router.get("/proveedores", async (req, res) => {
   try {
-    const [results] = await req.db.query("SELECT * FROM proveedores");
+    const query = `
+      SELECT 
+        p.id,
+        p.nombre_comercial, 
+        p.correo, 
+        p.direccion, 
+        p.telefono, 
+        pn.nombre_propietario, 
+        pn.dui,
+        pj.razon_social,
+        pj.nit,
+        pj.nrc,
+        pj.giro,
+        pj.correspondencia,
+        p.tipo_proveedor
+      FROM proveedores p
+      LEFT JOIN proveedores_naturales pn ON p.id = pn.proveedor_id
+      LEFT JOIN proveedores_juridicos pj ON p.id = pj.proveedor_id;
+    `;
+    const [results] = await req.db.query(query);
     res.json(results);
   } catch (err) {
-    res.status(500).json({ message: "Error al obtener proveedores", error: err.message });
+    res.status(500).json({
+      message: "Error al obtener proveedores",
+      error: err.message,
+    });
   }
 });
 
 // POST: Crear nuevo proveedor
 router.post("/proveedores", async (req, res) => {
+  const {
+    nombre_comercial,
+    correo,
+    direccion,
+    telefono,
+    tipo_proveedor, // 'natural' o 'juridico'
+    nombre_propietario,
+    dui,
+    razon_social,
+    nit,
+    nrc,
+    giro,
+    correspondencia
+  } = req.body;
+
+  const connection = await req.db.getConnection(); // Obtener conexión para transacción
   try {
-    const {
-      nombre,
-      direccion,
-      contacto,
-      correo,
-      clasificacion,
-      tipo_persona,
-      numero_factura_compra = "0",
-      ley_tributaria,
-    } = req.body;
-    // Puedes agregar validaciones de campos aquí si lo necesitas
-    const [result] = await req.db.query(
-      "INSERT INTO proveedores (nombre, direccion, contacto, correo, clasificacion, tipo_persona, numero_factura_compra, ley_tributaria) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      [nombre, direccion, contacto, correo, clasificacion, tipo_persona, numero_factura_compra, ley_tributaria]
+    await connection.beginTransaction(); // Iniciar transacción
+
+    // Insertar en la tabla 'proveedores' incluyendo el tipo de proveedor
+    const [result] = await connection.query(
+      "INSERT INTO proveedores (nombre_comercial, correo, direccion, telefono, tipo_proveedor) VALUES (?, ?, ?, ?, ?)",
+      [nombre_comercial, correo, direccion, telefono, tipo_proveedor]
     );
+
+    const proveedorId = result.insertId; // Obtener el ID insertado
+
+    if (tipo_proveedor === "natural") {
+      // Insertar en la tabla 'proveedores_naturales'
+      await connection.query(
+        "INSERT INTO proveedores_naturales (proveedor_id, nombre_propietario, dui) VALUES (?, ?, ?)",
+        [proveedorId, nombre_propietario, dui]
+      );
+    } else if (tipo_proveedor === "juridico") {
+      // Insertar en la tabla 'proveedores_juridicos'
+      await connection.query(
+        "INSERT INTO proveedores_juridicos (proveedor_id, razon_social, nit, nrc, giro, correspondencia) VALUES (?, ?, ?, ?, ?, ?)",
+        [proveedorId, razon_social, nit, nrc, giro, correspondencia]
+      );
+    } else {
+      throw new Error("Tipo de proveedor inválido");
+    }
+
+    await connection.commit(); // Confirmar transacción
+
     res.status(201).json({
       message: "Proveedor creado exitosamente",
-      id: result.insertId,
+      id: proveedorId,
     });
   } catch (err) {
-    res.status(500).json({ message: "Error interno del servidor", error: err.message });
+    await connection.rollback(); // Revertir cambios en caso de error
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: err.message });
+  } finally {
+    connection.release(); // Liberar conexión
   }
 });
 
+
+
 // PUT: Actualizar proveedor por ID
-router.put("/proveedores/:id", async (req, res) => {
+router.put('/proveedores/:id', async (req, res) => {
+  const { id } = req.params;
+  const { 
+    nombre_comercial, 
+    correo, 
+    direccion, 
+    telefono, 
+    tipo_proveedor,
+    nombre_propietario,
+    dui,
+    razon_social,
+    nit,
+    nrc,
+    giro,
+    correspondencia
+  } = req.body;
+
   try {
-    const { id } = req.params;
-    const {
-      nombre,
-      direccion,
-      contacto,
-      correo,
-      clasificacion,
-      tipo_persona,
-      numero_factura_compra,
-      ley_tributaria,
-    } = req.body;
+    // Actualizar datos generales del proveedor (común para ambos tipos)
     await req.db.query(
       `UPDATE proveedores SET 
-        nombre = ?, 
+        nombre_comercial = ?, 
         direccion = ?, 
-        contacto = ?, 
-        correo = ?, 
-        clasificacion = ?, 
-        tipo_persona = ?, 
-        numero_factura_compra = ?, 
-        ley_tributaria = ? 
+        telefono = ?, 
+        correo = ?
       WHERE id = ?`,
-      [nombre, direccion, contacto, correo, clasificacion, tipo_persona, numero_factura_compra, ley_tributaria, id]
+      [nombre_comercial, direccion, telefono, correo, id]
     );
+
+    // Verificar el tipo de proveedor y realizar la acción correspondiente
+    if (tipo_proveedor === 'Natural') {
+      // Verificar si ya existe un registro en proveedores_naturales
+      const [existingNatural] = await req.db.query(
+        "SELECT id FROM proveedores_naturales WHERE proveedor_id = ?",
+        [id]
+      );
+
+      if (existingNatural.length > 0) {
+        // Si existe, actualizar
+        await req.db.query(
+          `UPDATE proveedores_naturales SET 
+              nombre_propietario = ?, 
+              dui = ?
+            WHERE proveedor_id = ?`,
+          [nombre_propietario, dui, id]
+        );
+      } else {
+        // Si no existe, insertar
+        await req.db.query(
+          `INSERT INTO proveedores_naturales (proveedor_id, nombre_propietario, dui) 
+            VALUES (?, ?, ?)`,
+          [id, nombre_propietario, dui]
+        );
+      }
+    } else if (tipo_proveedor === 'Juridico') {
+      // Verificar si ya existe un registro en proveedores_juridicos
+      const [existingJuridico] = await req.db.query(
+        "SELECT id FROM proveedores_juridicos WHERE proveedor_id = ?",
+        [id]
+      );
+
+      if (existingJuridico.length > 0) {
+        // Si existe, actualizar
+        await req.db.query(
+          `UPDATE proveedores_juridicos SET 
+              razon_social = ?, 
+              nit = ?, 
+              nrc = ?, 
+              giro = ?, 
+              correspondencia = ?
+            WHERE proveedor_id = ?`,
+          [razon_social, nit, nrc, giro, correspondencia, id]
+        );
+      } else {
+        // Si no existe, insertar
+        await req.db.query(
+          `INSERT INTO proveedores_juridicos (proveedor_id, razon_social, nit, nrc, giro, correspondencia) 
+            VALUES (?, ?, ?, ?, ?, ?)`,
+          [id, razon_social, nit, nrc, giro, correspondencia]
+        );
+      }
+    }
+
     res.json({ message: "Proveedor actualizado correctamente" });
   } catch (err) {
-    res.status(500).json({ message: "Error al actualizar proveedor", error: err.message });
+    res.status(500).json({
+      message: "Error al actualizar proveedor",
+      error: err.message,
+    });
   }
 });
+
 
 // GET: Obtener proveedor por ID
 router.get("/proveedores/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const [results] = await req.db.query("SELECT * FROM proveedores WHERE id = ?", [id]);
+
+    const query = `
+      SELECT * FROM proveedores WHERE id = ?;
+    `;
+    const [results] = await req.db.query(query, [id]);
+
     if (results.length === 0) {
       return res.status(404).json({ message: "Proveedor no encontrado" });
     }
+
     res.json(results[0]);
   } catch (err) {
-    res.status(500).json({ message: "Error al obtener el proveedor", error: err.message });
+    res.status(500).json({
+      message: "Error al obtener el proveedor",
+      error: err.message,
+    });
   }
 });
 
+
+
+
+// DELETE: Eliminar proveedor por ID
 // DELETE: Eliminar proveedor por ID
 router.delete("/proveedores/:id", async (req, res) => {
+  const proveedorId = req.params.id;
+  const connection = await req.db.getConnection();
+
   try {
-    const { id } = req.params;
-    const [result] = await req.db.query("DELETE FROM proveedores WHERE id = ?", [id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Proveedor no encontrado" });
+    await connection.beginTransaction(); // Iniciar transacción
+
+    // Verificar el tipo de proveedor (natural o jurídico)
+    const [result] = await connection.query(
+      "SELECT tipo_proveedor FROM proveedores WHERE id = ?",
+      [proveedorId]
+    );
+
+    if (result.length === 0) {
+      throw new Error("Proveedor no encontrado");
     }
-    res.json({ message: "Proveedor eliminado exitosamente" });
+
+    const tipoProveedor = result[0].tipo_proveedor;
+
+    if (tipoProveedor === "Natural") {
+      // Eliminar de la tabla proveedores_naturales si es natural
+      await connection.query(
+        "DELETE FROM proveedores_naturales WHERE proveedor_id = ?",
+        [proveedorId]
+      );
+    } else if (tipoProveedor === "Jurídico") {
+      // Eliminar de la tabla proveedores_juridicos si es jurídico
+      await connection.query(
+        "DELETE FROM proveedores_juridicos WHERE proveedor_id = ?",
+        [proveedorId]
+      );
+    }
+
+    // Finalmente eliminar de la tabla principal proveedores
+    await connection.query(
+      "DELETE FROM proveedores WHERE id = ?",
+      [proveedorId]
+    );
+
+    await connection.commit(); // Confirmar eliminación
+
+    res.status(200).json({ message: "Proveedor eliminado exitosamente" });
   } catch (err) {
-    res.status(500).json({ message: "Error al eliminar proveedor", error: err.message });
+    await connection.rollback(); // Revertir cambios en caso de error
+    res.status(500).json({ message: "Error eliminando el proveedor", error: err.message });
+  } finally {
+    connection.release();
   }
 });
+
 
 module.exports = router;

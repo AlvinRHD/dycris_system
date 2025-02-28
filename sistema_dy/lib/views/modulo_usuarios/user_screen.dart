@@ -83,7 +83,9 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     String query = _searchController.text.toLowerCase();
     setState(() {
       usuariosFiltrados = usuarios.where((usuario) {
-        return (usuario['nombre_completo'] as String).toLowerCase().contains(query) ||
+        return (usuario['nombre_completo'] as String)
+                .toLowerCase()
+                .contains(query) ||
             (usuario['usuario'] as String).toLowerCase().contains(query);
       }).toList();
     });
@@ -93,8 +95,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     return ButtonStyle(
       backgroundColor: WidgetStateProperty.resolveWith<Color?>(
         (Set<WidgetState> states) {
-          if (states.contains(WidgetState.hovered) || states.contains(WidgetState.pressed)) {
-            // ignore: deprecated_member_use
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.pressed)) {
             return const Color.fromARGB(255, 18, 122, 234).withOpacity(0.15);
           }
           return Theme.of(context).dialogBackgroundColor;
@@ -105,7 +107,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       ),
       elevation: WidgetStateProperty.all(0),
       padding: WidgetStateProperty.all(
-        const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
+          const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
       shape: WidgetStateProperty.all(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -200,12 +202,13 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     }
   }
 
+  /// Se elimina el parámetro 'cargo' para actualizar el usuario, ya que éste dato
+  /// se debe mantener sincronizado desde la tabla de empleados.
   Future<void> _updateUser(
-      String usuario, String tipoCuenta, String cargo, String password) async {
+      String usuario, String tipoCuenta, String password) async {
     final url = Uri.parse('http://localhost:3000/api/usuarios/$usuario');
     final Map<String, dynamic> body = {
       'tipo_cuenta': tipoCuenta,
-      'cargo': cargo,
     };
     if (password.isNotEmpty) {
       body['password'] = password;
@@ -244,15 +247,11 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
 
   Future<void> _showEditUserDialog(Map<String, dynamic> usuarioData) async {
     String tipoCuentaValue = usuarioData['tipo_cuenta']?.toString() ?? 'Admin';
-    String cargoValue = usuarioData['cargo']?.toString() ?? 'Administrador';
+    // Se muestra el cargo obtenido (de la unión con empleados en la API)
+    String cargoValue = usuarioData['cargo']?.toString() ?? 'No definido';
 
     if (!['Admin', 'Normal'].contains(tipoCuentaValue)) {
       tipoCuentaValue = 'Admin';
-    }
-
-    if (!['Administrador', 'Gerente', 'Cajero', 'Vendedor', 'Bodeguero']
-        .contains(cargoValue)) {
-      cargoValue = 'Administrador';
     }
 
     final TextEditingController nombreController =
@@ -307,27 +306,16 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                           child: Text(rol),
                         );
                       }).toList(),
-                      onChanged: (value) => setStateModal(() => tipoCuentaValue = value!),
+                      onChanged: (value) =>
+                          setStateModal(() => tipoCuentaValue = value!),
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: cargoValue,
-                      decoration: _inputDecoration('Cargo', Icons.work_outline),
-                      icon: const Icon(Icons.arrow_drop_down,
-                          color: Color(0xFF3C3C3C)),
-                      items: [
-                        'Administrador',
-                        'Gerente',
-                        'Cajero',
-                        'Vendedor',
-                        'Bodeguero'
-                      ].map((cargo) {
-                        return DropdownMenuItem<String>(
-                          value: cargo,
-                          child: Text(cargo),
-                        );
-                      }).toList(),
-                      onChanged: (value) => setStateModal(() => cargoValue = value!),
+                    // Campo para mostrar el cargo en modo lectura, ya que proviene de empleados
+                    TextFormField(
+                      initialValue: cargoValue,
+                      decoration:
+                          _inputDecoration('Cargo', Icons.work_outline),
+                      readOnly: true,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -343,7 +331,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                                 : Icons.visibility,
                             color: const Color(0xFF3C3C3C),
                           ),
-                          onPressed: () => setStateModal(() => obscureText = !obscureText),
+                          onPressed: () => setStateModal(
+                              () => obscureText = !obscureText),
                         ),
                       ),
                     ),
@@ -357,16 +346,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                       await _showAlertDialog(
                         'Error',
                         'El tipo de cuenta es requerido',
-                        Icons.error,
-                        Colors.red,
-                      );
-                      return;
-                    }
-
-                    if (cargoValue.isEmpty) {
-                      await _showAlertDialog(
-                        'Error',
-                        'El cargo es requerido',
                         Icons.error,
                         Colors.red,
                       );
@@ -398,7 +377,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                     await _updateUser(
                       usuarioData['usuario'],
                       tipoCuentaValue,
-                      cargoValue,
                       passwordController.text.trim(),
                     );
                     // ignore: use_build_context_synchronously
@@ -407,7 +385,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                   style: _alertButtonStyle().copyWith(
                     side: WidgetStateProperty.all(
                       BorderSide(
-                          // ignore: deprecated_member_use
                           color: Colors.black.withOpacity(0.3), width: 1),
                     ),
                   ),
@@ -418,7 +395,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                   style: _alertButtonStyle().copyWith(
                     side: WidgetStateProperty.all(
                       BorderSide(
-                          // ignore: deprecated_member_use
                           color: Colors.black.withOpacity(0.3), width: 1),
                     ),
                   ),
@@ -488,7 +464,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                 border: Border.all(color: Colors.black),
                 boxShadow: [
                   BoxShadow(
-                    // ignore: deprecated_member_use
                     color: Colors.grey.withOpacity(0.1),
                     spreadRadius: 1,
                     blurRadius: 8,
@@ -547,7 +522,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      // ignore: deprecated_member_use
                       color: Colors.grey.withOpacity(0.1),
                       spreadRadius: 1,
                       blurRadius: 8,
@@ -564,12 +538,9 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                         columnSpacing: 40,
                         horizontalMargin: 24,
                         headingRowHeight: 56,
-                        // ignore: deprecated_member_use
                         dataRowHeight: 56,
                         headingRowColor:
-                            // ignore: deprecated_member_use
                             MaterialStateProperty.resolveWith<Color>(
-                          // ignore: deprecated_member_use
                           (Set<MaterialState> states) => Colors.grey[50]!,
                         ),
                         decoration: BoxDecoration(
@@ -637,8 +608,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                                         IconButton(
                                           icon: const Icon(Icons.delete,
                                               color: Colors.red),
-                                          onPressed: () => _confirmDelete(
-                                              usuario['usuario']),
+                                          onPressed: () =>
+                                              _confirmDelete(usuario['usuario']),
                                         ),
                                       ],
                                     ),

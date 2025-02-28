@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/services.dart';
 
 class RegistroProveedorScreen extends StatefulWidget {
   const RegistroProveedorScreen({super.key});
@@ -10,52 +11,103 @@ class RegistroProveedorScreen extends StatefulWidget {
       _RegistroProveedorScreenState();
 }
 
-enum TipoPersona { Natural, Juridica }
-
-enum ClasificacionEmpresa {
-  Microempresa,
-  PequenaEmpresa,
-  MedianaEmpresa,
-  GranEmpresa
-}
-
 class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  final RegExp emailRegex = RegExp(
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+  );
+
   final TextEditingController _nombreController = TextEditingController();
-  final TextEditingController _direccionController = TextEditingController();
-  final TextEditingController _contactoController = TextEditingController();
   final TextEditingController _correoController = TextEditingController();
-  final TextEditingController _clasificacionController =
-      TextEditingController();
-  final TextEditingController _leyTributariaController =
+  final TextEditingController _direccionController = TextEditingController();
+  final TextEditingController _telefonoController = TextEditingController();
+
+  final TextEditingController _propietarioController = TextEditingController();
+  final TextEditingController _duiController = TextEditingController();
+
+  final TextEditingController _razonSocialController = TextEditingController();
+  final TextEditingController _nitController = TextEditingController();
+  final TextEditingController _nrcController = TextEditingController();
+  final TextEditingController _giroController = TextEditingController();
+  final TextEditingController _correspondenciaController =
       TextEditingController();
 
-  TipoPersona? _selectedTipoPersona;
-  ClasificacionEmpresa? _selectedClasificacion;
+  String _tipoProveedor = 'natural';
+
+  List<TextInputFormatter> duiInputFormatters() {
+    return [
+      FilteringTextInputFormatter.digitsOnly,
+      LengthLimitingTextInputFormatter(9), // Limita la longitud a 9 caracteres
+      TextInputFormatter.withFunction((oldValue, newValue) {
+        String newText = newValue.text;
+        if (newText.length > 8) {
+          // Si el texto tiene más de 8 caracteres, agregar un guion en la posición 8
+          newText = newText.substring(0, 8) + '-' + newText.substring(8);
+        }
+        return TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: newText.length),
+        );
+      }),
+    ];
+  }
+
+  List<TextInputFormatter> nitInputFormatters() {
+    return [
+      FilteringTextInputFormatter.digitsOnly,
+      LengthLimitingTextInputFormatter(14),
+      TextInputFormatter.withFunction((oldValue, newValue) {
+        String newText = newValue.text;
+        if (newText.length > 4) {
+          newText = newText.substring(0, 4) + '-' + newText.substring(4);
+        }
+
+        if (newText.length > 11) {
+          newText = newText.substring(0, 11) + '-' + newText.substring(11);
+        }
+
+        if (newText.length > 15) {
+          newText = newText.substring(0, 15) + '-' + newText.substring(15);
+        }
+
+        return TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: newText.length),
+        );
+      }),
+    ];
+  }
 
   Future<void> _registrarProveedor() async {
     if (_formKey.currentState?.validate() ?? false) {
-      final nombre = _nombreController.text;
-      final direccion = _direccionController.text;
-      final contacto = _contactoController.text;
-      final correo = _correoController.text;
-      final tipoPersonaSeleccionada =
-          _selectedTipoPersona == TipoPersona.Natural ? 'Natural' : 'Juridica';
-      final clasificacion = _selectedClasificacion.toString().split('.').last;
-      final leyTributaria = _leyTributariaController.text;
+      final Map<String, dynamic> requestBody = {
+        'nombre_comercial': _nombreController.text,
+        'correo': _correoController.text,
+        'direccion': _direccionController.text,
+        'telefono': _telefonoController.text,
+        'tipo_proveedor': _tipoProveedor,
+      };
+
+      if (_tipoProveedor == 'natural') {
+        requestBody.addAll({
+          'nombre_propietario': _propietarioController.text,
+          'dui': _duiController.text,
+        });
+      } else if (_tipoProveedor == 'juridico') {
+        requestBody.addAll({
+          'razon_social': _razonSocialController.text,
+          'nit': _nitController.text,
+          'nrc': _nrcController.text,
+          'giro': _giroController.text,
+          'correspondencia': _correspondenciaController.text,
+        });
+      }
 
       final response = await http.post(
         Uri.parse('http://localhost:3000/api/proveedores'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'nombre': nombre,
-          'direccion': direccion,
-          'contacto': contacto,
-          'correo': correo,
-          'clasificacion': clasificacion,
-          'tipo_persona': tipoPersonaSeleccionada,
-          'ley_tributaria': leyTributaria,
-        }),
+        body: json.encode(requestBody),
       );
 
       if (response.statusCode == 201) {
@@ -79,11 +131,16 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
   @override
   void dispose() {
     _nombreController.dispose();
-    _direccionController.dispose();
-    _contactoController.dispose();
     _correoController.dispose();
-    _clasificacionController.dispose();
-    _leyTributariaController.dispose();
+    _direccionController.dispose();
+    _telefonoController.dispose();
+    _propietarioController.dispose();
+    _duiController.dispose();
+    _razonSocialController.dispose();
+    _nitController.dispose();
+    _nrcController.dispose();
+    _giroController.dispose();
+    _correspondenciaController.dispose();
     super.dispose();
   }
 
@@ -95,10 +152,7 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE3F2FD),
-              Color(0xFFBBDEFB),
-            ],
+            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
           ),
         ),
         child: Padding(
@@ -109,7 +163,8 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   Container(
-                    constraints: const BoxConstraints(maxWidth: 400),
+                    constraints: const BoxConstraints(
+                        maxWidth: 600), // Aumenta el ancho total
                     child: Card(
                       elevation: 4,
                       shape: RoundedRectangleBorder(
@@ -131,101 +186,128 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
                             Form(
                               key: _formKey,
                               child: Column(children: <Widget>[
-                                _buildTextField(
-                                  controller: _nombreController,
-                                  label: 'Nombre del Proveedor',
-                                  icon: Icons.business,
-                                ),
-                                _buildTextField(
-                                  controller: _direccionController,
-                                  label: 'Dirección',
-                                  icon: Icons.location_on,
-                                ),
-                                _buildTextField(
-                                  controller: _contactoController,
-                                  label: 'Contacto',
-                                  icon: Icons.phone,
-                                  keyboardType: TextInputType.phone,
-                                ),
-                                _buildTextField(
-                                  controller: _correoController,
-                                  label: 'Correo Electrónico',
-                                  icon: Icons.email,
-                                  keyboardType: TextInputType.emailAddress,
-                                ),
-                                _buildTextField(
-                                  controller: _leyTributariaController,
-                                  label: 'Ley Tributaria',
-                                  icon: Icons.gavel,
-                                ),
-                                const SizedBox(height: 16),
-                                DropdownButtonFormField<TipoPersona>(
-                                  value: _selectedTipoPersona,
-                                  decoration: InputDecoration(
-                                    labelText: 'Tipo de Persona',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                _buildDropdown(),
+                                Wrap(
+                                  spacing: 20,
+                                  runSpacing: 20,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildTextField(
+                                            controller: _nombreController,
+                                            label: 'Nombre comercial',
+                                            icon: Icons.store,
+                                          ),
+                                        ),
+                                        SizedBox(width: 20),
+                                        Expanded(
+                                          child: _buildTextField(
+                                            controller: _correoController,
+                                            label: 'Correo Electrónico',
+                                            icon: Icons.email,
+                                            keyboardType:
+                                                TextInputType.emailAddress,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    prefixIcon: const Icon(Icons.contact_mail),
-                                  ),
-                                  items: TipoPersona.values
-                                      .map((TipoPersona tipo) {
-                                    return DropdownMenuItem<TipoPersona>(
-                                      value: tipo,
-                                      child: Text(tipo
-                                          .toString()
-                                          .split('.')
-                                          .last
-                                          .toUpperCase()),
-                                    );
-                                  }).toList(),
-                                  onChanged: (TipoPersona? newValue) {
-                                    setState(() {
-                                      _selectedTipoPersona = newValue;
-                                    });
-                                  },
-                                  validator: (value) {
-                                    if (value == null) {
-                                      return 'Por favor seleccione un tipo de persona';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                DropdownButtonFormField<ClasificacionEmpresa>(
-                                  value: _selectedClasificacion,
-                                  decoration: InputDecoration(
-                                    labelText: 'Clasificación',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildTextField(
+                                            controller: _direccionController,
+                                            label: 'Dirección',
+                                            icon: Icons.location_on,
+                                          ),
+                                        ),
+                                        SizedBox(width: 20),
+                                        Expanded(
+                                          child: _buildTextField(
+                                            controller: _telefonoController,
+                                            label: 'Teléfono',
+                                            icon: Icons.call,
+                                            keyboardType: TextInputType.phone,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    prefixIcon: const Icon(Icons.category),
-                                  ),
-                                  items: ClasificacionEmpresa.values.map(
-                                      (ClasificacionEmpresa clasificacion) {
-                                    return DropdownMenuItem<
-                                        ClasificacionEmpresa>(
-                                      value: clasificacion,
-                                      child: Text(clasificacion
-                                          .toString()
-                                          .split('.')
-                                          .last
-                                          .replaceAllMapped(RegExp(r'([A-Z])'),
-                                              (match) => ' ${match.group(0)}')
-                                          .toUpperCase()),
-                                    );
-                                  }).toList(),
-                                  onChanged: (ClasificacionEmpresa? newValue) {
-                                    setState(() {
-                                      _selectedClasificacion = newValue;
-                                    });
-                                  },
-                                  validator: (value) {
-                                    if (value == null) {
-                                      return 'Por favor seleccione una clasificación';
-                                    }
-                                    return null;
-                                  },
+                                    if (_tipoProveedor == 'natural') ...[
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildTextField(
+                                              controller:
+                                                  _propietarioController,
+                                              label: 'Nombre del propietario',
+                                              icon: Icons.person,
+                                            ),
+                                          ),
+                                          SizedBox(width: 20),
+                                          Expanded(
+                                            child: _buildTextField(
+                                              controller: _duiController,
+                                              label: 'DUI',
+                                              icon: Icons.badge,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                    if (_tipoProveedor == 'juridico') ...[
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildTextField(
+                                              controller:
+                                                  _razonSocialController,
+                                              label: 'Razón social',
+                                              icon: Icons.apartment,
+                                            ),
+                                          ),
+                                          SizedBox(width: 20),
+                                          Expanded(
+                                            child: _buildTextField(
+                                              controller: _nitController,
+                                              label: 'NIT',
+                                              icon: Icons.confirmation_number,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildTextField(
+                                              controller: _nrcController,
+                                              label: 'NRC',
+                                              icon: Icons.receipt_long,
+                                            ),
+                                          ),
+                                          SizedBox(width: 20),
+                                          Expanded(
+                                            child: _buildTextField(
+                                              controller: _giroController,
+                                              label: 'Giro',
+                                              icon: Icons.business,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildTextField(
+                                              controller:
+                                                  _correspondenciaController,
+                                              label: 'Correspondencia',
+                                              icon: Icons.markunread_mailbox,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
                                 ),
                                 const SizedBox(height: 24),
                                 Row(
@@ -260,6 +342,31 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
     );
   }
 
+  Widget _buildDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: DropdownButtonFormField<String>(
+        value: _tipoProveedor,
+        decoration: InputDecoration(
+          labelText: 'Tipo de proveedor',
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          prefixIcon: const Icon(Icons.category),
+        ),
+        items: const [
+          DropdownMenuItem(value: 'natural', child: Text('Natural')),
+          DropdownMenuItem(value: 'juridico', child: Text('Jurídico')),
+        ],
+        onChanged: (value) {
+          setState(() {
+            _tipoProveedor = value!;
+          });
+        },
+      ),
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -278,9 +385,45 @@ class _RegistroProveedorScreenState extends State<RegistroProveedorScreen> {
           prefixIcon: Icon(icon),
         ),
         keyboardType: keyboardType,
+        inputFormatters: label == 'DUI'
+            ? duiInputFormatters()
+            : (label == 'NIT'
+                ? nitInputFormatters()
+                : (label == 'Teléfono'
+                    ? [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(8)
+                      ]
+                    : [])),
         validator: (value) {
           if (value == null || value.isEmpty) {
+            if (label == 'Correspondencia') {
+              return null;
+            }
             return 'Por favor ingrese $label';
+          }
+          if (label == 'Teléfono' &&
+              !RegExp(r'^\d{8}$').hasMatch(value ?? '')) {
+            return 'El teléfono es invalido.';
+          }
+          if (label == 'DUI' && !RegExp(r'^\d{8}-\d$').hasMatch(value ?? '')) {
+            return 'El DUI debe tener el formato xxxxxxxx-x';
+          }
+          if (label == 'NRC' &&
+              !RegExp(r'^[A-Za-z0-9]{11}$').hasMatch(value ?? '')) {
+            return 'El NRC debe tener 11 caracteres alfanuméricos.';
+          }
+          if (label == 'NIT' &&
+              !RegExp(r'^\d{4}-\d{6}-\d{3}-\d$').hasMatch(value ?? '')) {
+            return 'El NIT debe tener el formato xxxx-xxxxxx-xxx-x';
+          }
+          if (label == 'Correo Electrónico') {
+            final RegExp emailRegex = RegExp(
+              r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+            );
+            if (!emailRegex.hasMatch(value)) {
+              return 'Ingrese un correo electrónico válido';
+            }
           }
           return null;
         },

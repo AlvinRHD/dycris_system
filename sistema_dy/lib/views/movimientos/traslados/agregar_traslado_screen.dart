@@ -124,9 +124,11 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
         _cantidadController.text.isEmpty ||
         int.tryParse(_cantidadController.text) == null ||
         int.parse(_cantidadController.text) <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Seleccione un producto y especifique una cantidad válida')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Seleccione un producto y especifique una cantidad válida')),
+      );
       return;
     }
 
@@ -162,6 +164,8 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
   }
 
   void _agregarTraslado() async {
+    if (!_formKey.currentState!.validate()) return;
+
     if (_loggedInUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Usuario no autenticado')),
@@ -172,13 +176,14 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
     if (_selectedProductos.isEmpty ||
         _selectedSucursalOrigen == null ||
         _selectedSucursalDestino == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Complete todos los campos requeridos y agregue al menos un producto')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Complete todos los campos requeridos y agregue al menos un producto')),
+      );
       return;
     }
 
-    // Usamos empleado_id en lugar de id, asumiendo que el token lo proporciona
     final traslado = {
       'productos': _selectedProductos,
       'codigo_sucursal_origen': _selectedSucursalOrigen,
@@ -217,7 +222,7 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
                 readOnly: true,
               ),
               SizedBox(height: 15),
-              TextField(
+              TextFormField(
                 controller: _productoController,
                 decoration: InputDecoration(
                   labelText: "Buscar producto",
@@ -225,6 +230,9 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
                   border: OutlineInputBorder(),
                 ),
                 onChanged: _buscarProductos,
+                validator: (value) => _selectedProductos.isEmpty
+                    ? 'Agregue al menos un producto'
+                    : null,
               ),
               SizedBox(height: 15),
               Container(
@@ -257,11 +265,21 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               SizedBox(height: 15),
-              TextField(
+              TextFormField(
                 controller: _cantidadController,
                 decoration: InputDecoration(
                     labelText: "Cantidad", border: OutlineInputBorder()),
                 keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (_productoSeleccionado != null &&
+                      (value == null || value.isEmpty)) {
+                    return 'Ingrese una cantidad';
+                  }
+                  final cantidad = int.tryParse(value ?? '');
+                  if (cantidad != null && cantidad <= 0)
+                    return 'Cantidad debe ser mayor a 0';
+                  return null;
+                },
               ),
               SizedBox(height: 15),
               ElevatedButton(
@@ -314,7 +332,7 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
                   ],
                 ),
               SizedBox(height: 15),
-              TextField(
+              TextFormField(
                 controller: _sucursalOrigenSearchController,
                 decoration: InputDecoration(
                   labelText: "Buscar sucursal origen",
@@ -322,6 +340,9 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
                   border: OutlineInputBorder(),
                 ),
                 onChanged: _buscarSucursalesOrigen,
+                validator: (value) => _selectedSucursalOrigen == null
+                    ? 'Seleccione una sucursal origen'
+                    : null,
               ),
               SizedBox(height: 15),
               Container(
@@ -364,7 +385,7 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
                       fontWeight: FontWeight.bold, color: Colors.green),
                 ),
               SizedBox(height: 15),
-              TextField(
+              TextFormField(
                 controller: _sucursalDestinoSearchController,
                 decoration: InputDecoration(
                   labelText: "Buscar sucursal destino",
@@ -372,6 +393,13 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
                   border: OutlineInputBorder(),
                 ),
                 onChanged: _buscarSucursalesDestino,
+                validator: (value) {
+                  if (_selectedSucursalDestino == null)
+                    return 'Seleccione una sucursal destino';
+                  if (_selectedSucursalDestino == _selectedSucursalOrigen)
+                    return 'La sucursal destino debe ser diferente a la origen';
+                  return null;
+                },
               ),
               SizedBox(height: 15),
               Container(
@@ -424,10 +452,14 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
                     .toList(),
                 onChanged: (value) =>
                     setState(() => _estadoSeleccionado = value!),
+                validator: (value) =>
+                    value == null ? 'Seleccione un estado' : null,
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                  onPressed: _agregarTraslado, child: Text("Guardar Traslado")),
+                onPressed: _agregarTraslado,
+                child: Text("Guardar Traslado"),
+              ),
             ],
           ),
         ),

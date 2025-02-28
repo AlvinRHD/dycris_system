@@ -20,7 +20,7 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   final TextEditingController _subtotalController = TextEditingController();
   final TextEditingController _ivaController = TextEditingController();
   final TextEditingController _totalController = TextEditingController();
-  final TextEditingController _codigoProductoController =
+  final TextEditingController _busquedaProductoController =
       TextEditingController();
   final TextEditingController _precioProductoController =
       TextEditingController();
@@ -38,13 +38,13 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   bool _clienteTextFieldFocus = false;
   bool _productoTextFieldFocus = false;
   bool _descuentoAutorizado = false;
+  Map<String, dynamic>? _productoSeleccionado;
 
   @override
   void initState() {
     super.initState();
     _loadLoggedInUser();
     _clienteController.addListener(_buscarClientes);
-    // Removemos el listener de productos y lo manejamos en onChanged
   }
 
   Future<void> _loadLoggedInUser() async {
@@ -84,12 +84,8 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
       return;
     }
     try {
-      final producto = await VentaApi().getProductoPorCodigo(query);
-      if (producto.isNotEmpty) {
-        setState(() => _productosSugeridos = [producto]);
-      } else {
-        setState(() => _productosSugeridos = []);
-      }
+      final productos = await VentaApi().searchProductos(nombre: query);
+      setState(() => _productosSugeridos = productos);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al buscar productos: $e')));
@@ -109,32 +105,33 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     FocusScope.of(context).unfocus();
   }
 
+  void _seleccionarProducto(Map<String, dynamic> producto) {
+    setState(() {
+      _productoSeleccionado = producto;
+      _busquedaProductoController.text = producto['nombre'];
+      _precioProductoController.text = producto['precio_venta'].toString();
+      _productosSugeridos = [];
+      _productoTextFieldFocus = false;
+    });
+    FocusScope.of(context).unfocus();
+  }
+
   void _agregarProducto() async {
-    final codigo = _codigoProductoController.text.trim();
     final cantidad = int.tryParse(_cantidadController.text) ?? 0;
-    final precio = double.tryParse(_precioProductoController.text) ?? 0.0;
 
-    if (codigo.isEmpty || cantidad <= 0 || precio <= 0) {
+    if (_productoSeleccionado == null || cantidad <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Complete los campos del producto')),
+        SnackBar(content: Text('Seleccione un producto y una cantidad válida')),
       );
       return;
     }
 
-    final producto = await VentaApi().getProductoPorCodigo(codigo);
-    if (producto.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Producto $codigo no encontrado')),
-      );
-      return;
-    }
+    final producto = _productoSeleccionado!;
 
     setState(() {
-      // Verificar si el producto ya está en la lista
       final existingProductIndex = _productosSeleccionados
           .indexWhere((p) => p['codigo_producto'] == producto['codigo']);
       if (existingProductIndex != -1) {
-        // Producto ya existe, actualizar cantidad
         final currentProduct = _productosSeleccionados[existingProductIndex];
         final newCantidad = currentProduct['cantidad'] + cantidad;
         if (newCantidad > producto['stock_existencia']) {
@@ -149,7 +146,6 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
         currentProduct['subtotal'] =
             newCantidad * currentProduct['precio_unitario'];
       } else {
-        // Producto nuevo, verificar stock y añadir
         if (producto['stock_existencia'] < cantidad) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -162,13 +158,15 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
           'codigo_producto': producto['codigo'],
           'nombre': producto['nombre'],
           'cantidad': cantidad,
-          'precio_unitario': precio,
-          'subtotal': precio * cantidad,
+          'precio_unitario': double.parse(producto['precio_venta'].toString()),
+          'subtotal':
+              double.parse(producto['precio_venta'].toString()) * cantidad,
         });
       }
-      _codigoProductoController.clear();
+      _busquedaProductoController.clear();
       _precioProductoController.clear();
       _cantidadController.clear();
+      _productoSeleccionado = null;
       _productosSugeridos = [];
       _productoTextFieldFocus = false;
       _calcularTotales();
@@ -182,7 +180,6 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
       if (nuevoCantidad <= 0) {
         _productosSeleccionados.removeAt(index);
       } else {
-        // Verificar stock (simulamos que el máximo es el stock original + lo ya asignado)
         final productoInfo = _buscarProductoCache(producto['codigo_producto']);
         final stockMaximo = productoInfo != null
             ? productoInfo['stock_existencia']
@@ -210,6 +207,7 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     double subtotal =
         _productosSeleccionados.fold(0.0, (sum, p) => sum + p['subtotal']);
     double descuento = double.tryParse(_descuentoController.text) ?? 0.0;
+    if (descuento < 0 || descuento > 100) descuento = 0.0;
     double subtotalConDescuento = subtotal * (1 - descuento / 100);
     double iva = subtotalConDescuento * 0.13;
     double total = subtotalConDescuento + iva;
@@ -222,6 +220,8 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   }
 
   void _guardarVenta() async {
+    if (!_formKey.currentState!.validate()) return;
+
     if (_loggedInUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Usuario no autenticado')),
@@ -233,8 +233,9 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
         _tipoFactura == null ||
         _metodoPago == null ||
         _productosSeleccionados.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Complete todos los campos')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Complete todos los campos obligatorios')),
+      );
       return;
     }
 
@@ -348,6 +349,9 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                   decoration: InputDecoration(
                       labelText: "Buscar Cliente",
                       prefixIcon: Icon(Icons.search)),
+                  validator: (value) => _clienteSeleccionado == null
+                      ? 'Seleccione un cliente'
+                      : null,
                 ),
               ),
               if (_clientes.isNotEmpty && _clienteTextFieldFocus)
@@ -384,6 +388,8 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                         DropdownMenuItem(value: tipo, child: Text(tipo)))
                     .toList(),
                 onChanged: (value) => setState(() => _tipoFactura = value),
+                validator: (value) =>
+                    value == null ? 'Seleccione un tipo de factura' : null,
               ),
               DropdownButtonFormField<String>(
                 value: _metodoPago,
@@ -397,6 +403,8 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                         DropdownMenuItem(value: metodo, child: Text(metodo)))
                     .toList(),
                 onChanged: (value) => setState(() => _metodoPago = value),
+                validator: (value) =>
+                    value == null ? 'Seleccione un método de pago' : null,
               ),
               TextFormField(
                 controller: _notasController,
@@ -408,11 +416,14 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                 onFocusChange: (focus) =>
                     setState(() => _productoTextFieldFocus = focus),
                 child: TextFormField(
-                  controller: _codigoProductoController,
+                  controller: _busquedaProductoController,
                   decoration: InputDecoration(
-                      labelText: "Código Producto",
+                      labelText: "Buscar Producto (Código o Nombre)",
                       prefixIcon: Icon(Icons.search)),
-                  onChanged: _buscarProductos, // Búsqueda manejada aquí
+                  onChanged: _buscarProductos,
+                  validator: (value) => _productosSeleccionados.isEmpty
+                      ? 'Agregue al menos un producto'
+                      : null,
                 ),
               ),
               if (_productosSugeridos.isNotEmpty && _productoTextFieldFocus)
@@ -422,26 +433,32 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                     itemCount: _productosSugeridos.length,
                     itemBuilder: (context, index) => ListTile(
                       title: Text(_productosSugeridos[index]['nombre']),
-                      onTap: () {
-                        _codigoProductoController.text =
-                            _productosSugeridos[index]['codigo'];
-                        _precioProductoController.text =
-                            _productosSugeridos[index]['precio_venta']
-                                .toString();
-                        setState(() => _productosSugeridos = []);
-                      },
+                      subtitle: Text(
+                          'Código: ${_productosSugeridos[index]['codigo']} - Precio: \$${_productosSugeridos[index]['precio_venta']}'),
+                      onTap: () =>
+                          _seleccionarProducto(_productosSugeridos[index]),
                     ),
                   ),
                 ),
               TextFormField(
                 controller: _precioProductoController,
                 decoration: InputDecoration(labelText: "Precio"),
-                keyboardType: TextInputType.number,
+                readOnly: true,
               ),
               TextFormField(
                 controller: _cantidadController,
                 decoration: InputDecoration(labelText: "Cantidad"),
                 keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (_productoSeleccionado != null &&
+                      (value == null || value.isEmpty)) {
+                    return 'Ingrese una cantidad';
+                  }
+                  final cantidad = int.tryParse(value ?? '');
+                  if (cantidad != null && cantidad <= 0)
+                    return 'Cantidad debe ser mayor a 0';
+                  return null;
+                },
               ),
               ElevatedButton(
                   onPressed: _agregarProducto, child: Text("Agregar Producto")),
@@ -483,6 +500,14 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                 controller: _descuentoController,
                 decoration: InputDecoration(labelText: "Descuento (%)"),
                 keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  final descuento = double.tryParse(value);
+                  if (descuento == null || descuento < 0 || descuento > 100) {
+                    return 'Descuento debe estar entre 0 y 100';
+                  }
+                  return null;
+                },
                 onChanged: (_) => _calcularTotales(),
               ),
               TextFormField(
@@ -520,7 +545,7 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     _subtotalController.dispose();
     _ivaController.dispose();
     _totalController.dispose();
-    _codigoProductoController.dispose();
+    _busquedaProductoController.dispose();
     _precioProductoController.dispose();
     _cantidadController.dispose();
     _descuentoController.dispose();

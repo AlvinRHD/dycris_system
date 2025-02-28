@@ -79,10 +79,18 @@ class _AgregarOfertaScreenState extends State<AgregarOfertaScreen> {
   }
 
   void _agregarOferta() async {
-    if (_formKey.currentState!.validate() &&
-        _fechaInicio != null &&
-        _fechaFin != null &&
-        _selectedProductId != null) {
+    if (_formKey.currentState!.validate()) {
+      if (_selectedProductId == null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Seleccione un producto')));
+        return;
+      }
+      if (_fechaInicio == null || _fechaFin == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Seleccione las fechas de inicio y fin')));
+        return;
+      }
+
       final oferta = {
         'inventario_id': _selectedProductId,
         'descuento': double.parse(_descuentoController.text),
@@ -96,9 +104,6 @@ class _AgregarOfertaScreenState extends State<AgregarOfertaScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error al agregar oferta: $e')));
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Complete todos los campos requeridos')));
     }
   }
 
@@ -219,6 +224,9 @@ class _AgregarOfertaScreenState extends State<AgregarOfertaScreen> {
                     labelText: "Producto seleccionado",
                     border: OutlineInputBorder()),
                 readOnly: true,
+                validator: (value) => _selectedProductId == null
+                    ? 'Seleccione un producto'
+                    : null,
               ),
               SizedBox(height: 15),
               TextFormField(
@@ -226,10 +234,15 @@ class _AgregarOfertaScreenState extends State<AgregarOfertaScreen> {
                 decoration: InputDecoration(
                     labelText: "Descuento (%)", border: OutlineInputBorder()),
                 keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value!.isEmpty || double.tryParse(value) == null
-                        ? "Ingrese un número válido"
-                        : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty)
+                    return 'Ingrese un descuento';
+                  final descuento = double.tryParse(value);
+                  if (descuento == null || descuento <= 0 || descuento > 100) {
+                    return 'El descuento debe estar entre 0 y 100';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 15),
               if (_precioConDescuento != null)
@@ -249,6 +262,16 @@ class _AgregarOfertaScreenState extends State<AgregarOfertaScreen> {
                 trailing: Icon(Icons.calendar_today),
                 onTap: _seleccionarFechaFin,
               ),
+              if (_fechaInicio != null &&
+                  _fechaFin != null &&
+                  _fechaFin!.isBefore(_fechaInicio!))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'La fecha fin debe ser posterior a la fecha inicio',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
               SizedBox(height: 20),
               ElevatedButton(
                   onPressed: _agregarOferta, child: Text("Guardar Oferta")),
@@ -257,5 +280,12 @@ class _AgregarOfertaScreenState extends State<AgregarOfertaScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _descuentoController.dispose();
+    _productoSeleccionadoController.dispose();
+    super.dispose();
   }
 }

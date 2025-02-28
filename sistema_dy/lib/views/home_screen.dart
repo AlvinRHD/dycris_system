@@ -214,7 +214,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            Image.asset('assets/logos/logoEmpresa.jpg', height: 150),
+            Image.asset('assets/logos/logoEmpresa.png', height: 150),
             const SizedBox(width: 8),
             const Text('GRUPO RAMOS',
                 style: TextStyle(fontFamily: 'GoogleSans')),
@@ -277,9 +277,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Image.asset('assets/logos/logo1.jpg', height: 100),
-                  Image.asset('assets/logos/logo2.jpg', height: 100),
-                  Image.asset('assets/logos/logo3.jpg', height: 100),
+                  Image.asset('assets/logos/logo1.png', height: 100),
+                  Image.asset('assets/logos/logo2.png', height: 100),
+                  Image.asset('assets/logos/logo3.png', height: 100),
                 ],
               ),
             ),

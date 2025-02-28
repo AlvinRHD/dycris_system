@@ -43,9 +43,19 @@ class _EditarOfertaScreenState extends State<EditarOfertaScreen> {
   }
 
   void _guardarCambios() async {
-    if (_formKey.currentState!.validate() &&
-        _fechaInicio != null &&
-        _fechaFin != null) {
+    if (_formKey.currentState!.validate()) {
+      if (_fechaInicio == null || _fechaFin == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Seleccione las fechas de inicio y fin')));
+        return;
+      }
+      if (_fechaFin!.isBefore(_fechaInicio!)) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text('La fecha fin debe ser posterior a la fecha inicio')));
+        return;
+      }
+
       final datosActualizados = {
         'inventario_id': widget.oferta['inventario_id'],
         'descuento': double.parse(_descuentoController.text),
@@ -130,10 +140,15 @@ class _EditarOfertaScreenState extends State<EditarOfertaScreen> {
                 decoration: InputDecoration(
                     labelText: 'Descuento (%)', border: OutlineInputBorder()),
                 keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value!.isEmpty || double.tryParse(value) == null
-                        ? "Ingrese un número válido"
-                        : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty)
+                    return 'Ingrese un descuento';
+                  final descuento = double.tryParse(value);
+                  if (descuento == null || descuento <= 0 || descuento > 100) {
+                    return 'El descuento debe estar entre 0 y 100';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 15),
               if (_precioConDescuento != null)
@@ -153,10 +168,26 @@ class _EditarOfertaScreenState extends State<EditarOfertaScreen> {
                 trailing: Icon(Icons.calendar_today),
                 onTap: _seleccionarFechaFin,
               ),
+              if (_fechaInicio != null &&
+                  _fechaFin != null &&
+                  _fechaFin!.isBefore(_fechaInicio!))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'La fecha fin debe ser posterior a la fecha inicio',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _descuentoController.dispose();
+    super.dispose();
   }
 }

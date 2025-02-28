@@ -3,6 +3,8 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 
 
+
+
 // Función reutilizable para generar códigos automáticos
 async function generateCode(db, prefix, table, column) {
   const [result] = await db.query(
@@ -174,7 +176,7 @@ router.get("/ventas", async (req, res) => {
             'descripcion', i.descripcion,
             'categoria', cat.nombre, 
             'sucursal', suc.nombre, 
-            'proveedor', prov.nombre
+            'proveedor', prov.nombre_comercial
           )
         ) AS productos
       FROM ventas v
@@ -269,19 +271,7 @@ router.delete("/ventas/:id", async (req, res) => {
   }
 });
 
-// ------------------ INVENTARIO ------------------
 
-router.get("/inventario/codigo/:codigo", async (req, res) => {
-  try {
-    const { codigo } = req.params;
-    const [rows] = await req.db.query("SELECT * FROM inventario WHERE codigo = ?", [codigo]);
-    if (rows.length === 0) return res.status(404).json({});
-    res.json(rows[0]);
-  } catch (err) {
-    console.error("Error buscando producto:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // ------------------ CLIENTES ------------------
 
@@ -323,6 +313,27 @@ router.post("/clientes", async (req, res) => {
       telefono, fecha_inicio, fecha_fin, porcentaje_retencion,
     } = req.body;
 
+    // Validaciones obligatorias generales
+    if (!nombre || !direccion || !nit || !registro_contribuyente || !email || !telefono) {
+      return res.status(400).json({ message: "Todos los campos generales son requeridos" });
+    }
+
+    // Validaciones por tipo de cliente
+    if ((tipo_cliente === 'Natural' || tipo_cliente === 'Consumidor Final') && !dui) {
+      return res.status(400).json({ message: "DUI es requerido para Natural y Consumidor Final" });
+    }
+    if (tipo_cliente === 'Contribuyente Jurídico' && (!representante_legal || !direccion_representante)) {
+      return res.status(400).json({ message: "Representante Legal y Dirección son requeridos" });
+    }
+    if (tipo_cliente === 'ONG' && !razon_social) {
+      return res.status(400).json({ message: "Razón Social es requerida para ONG" });
+    }
+
+    let finalPorcentajeRetencion = porcentaje_retencion;
+    if (tipo_cliente === 'Sujeto Excluido') {
+      finalPorcentajeRetencion = 10.0;
+    }
+
     const codigoCliente = await generateCode(req.db, 'CGR', 'clientes', 'codigo_cliente');
 
     const [result] = await req.db.query(
@@ -334,7 +345,7 @@ router.post("/clientes", async (req, res) => {
       [
         codigoCliente, nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente,
         representante_legal, direccion_representante, razon_social, email, telefono,
-        fecha_inicio, fecha_fin, porcentaje_retencion
+        fecha_inicio, fecha_fin, finalPorcentajeRetencion
       ]
     );
 
@@ -352,54 +363,28 @@ router.post("/clientes", async (req, res) => {
 router.put("/clientes/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente,
-      representante_legal, direccion_representante, razon_social, email,
-      telefono, fecha_inicio, fecha_fin, porcentaje_retencion,
-    } = req.body;
+    const { direccion, email, telefono } = req.body;
 
     const [clienteActual] = await req.db.query("SELECT * FROM clientes WHERE idCliente = ?", [id]);
     if (clienteActual.length === 0) return res.status(404).json({ message: "Cliente no encontrado" });
 
-    const [result] = await req.db.query(
-      `UPDATE clientes SET 
-         nombre = ?, direccion = ?, dui = ?, nit = ?, tipo_cliente = ?, 
-         registro_contribuyente = ?, representante_legal = ?, 
-         direccion_representante = ?, razon_social = ?, email = ?, 
-         telefono = ?, fecha_inicio = ?, fecha_fin = ?, porcentaje_retencion = ? 
-       WHERE idCliente = ?`,
-      [
-        nombre || clienteActual[0].nombre, direccion || clienteActual[0].direccion,
-        dui || clienteActual[0].dui, nit || clienteActual[0].nit,
-        tipo_cliente || clienteActual[0].tipo_cliente,
-        registro_contribuyente || clienteActual[0].registro_contribuyente,
-        representante_legal || clienteActual[0].representante_legal,
-        direccion_representante || clienteActual[0].direccion_representante,
-        razon_social || clienteActual[0].razon_social, email || clienteActual[0].email,
-        telefono || clienteActual[0].telefono, fecha_inicio || clienteActual[0].fecha_inicio,
-        fecha_fin || clienteActual[0].fecha_fin, porcentaje_retencion || clienteActual[0].porcentaje_retencion,
-        id
-      ]
-    );
-
-    if (result.affectedRows === 0) return res.status(404).json({ message: "Cliente no encontrado" });
-
-    const datosNuevos = {
-      codigo_cliente: clienteActual[0].codigo_cliente,
-      nombre: nombre || clienteActual[0].nombre,
+    const datosActualizados = {
       direccion: direccion || clienteActual[0].direccion,
-      dui: dui || clienteActual[0].dui,
-      nit: nit || clienteActual[0].nit,
-      tipo_cliente: tipo_cliente || clienteActual[0].tipo_cliente,
-      registro_contribuyente: registro_contribuyente || clienteActual[0].registro_contribuyente,
-      representante_legal: representante_legal || clienteActual[0].representante_legal,
-      direccion_representante: direccion_representante || clienteActual[0].direccion_representante,
-      razon_social: razon_social || clienteActual[0].razon_social,
       email: email || clienteActual[0].email,
       telefono: telefono || clienteActual[0].telefono,
-      fecha_inicio: fecha_inicio || clienteActual[0].fecha_inicio,
-      fecha_fin: fecha_fin || clienteActual[0].fecha_fin,
-      porcentaje_retencion: porcentaje_retencion || clienteActual[0].porcentaje_retencion,
+    };
+
+    await req.db.query(
+      `UPDATE clientes SET 
+         direccion = ?, email = ?, telefono = ?
+       WHERE idCliente = ?`,
+      [datosActualizados.direccion, datosActualizados.email, datosActualizados.telefono, id]
+    );
+
+    const datosNuevos = {
+      direccion: datosActualizados.direccion,
+      email: datosActualizados.email,
+      telefono: datosActualizados.telefono,
     };
 
     await req.db.query(
@@ -823,7 +808,7 @@ router.get("/categorias", async (req, res) => {
 router.get("/buscar-inventario", async (req, res) => {
   try {
     const { categoria_id, nombre } = req.query;
-    let query = "SELECT id, codigo, nombre FROM inventario WHERE 1=1";
+    let query = "SELECT id, codigo, nombre, precio_venta, stock_existencia FROM inventario WHERE 1=1";
     const params = [];
 
     if (categoria_id) {
@@ -831,8 +816,8 @@ router.get("/buscar-inventario", async (req, res) => {
       params.push(categoria_id);
     }
     if (nombre) {
-      query += " AND nombre LIKE ?";
-      params.push(`%${nombre}%`);
+      query += " AND (nombre LIKE ? OR codigo LIKE ?)";
+      params.push(`%${nombre}%`, `%${nombre}%`); // Busca en nombre o código
     }
 
     const [rows] = await req.db.query(query, params);

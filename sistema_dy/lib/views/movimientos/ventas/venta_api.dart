@@ -57,14 +57,26 @@ class VentaApi {
     throw Exception('Error al cargar historial');
   }
 
-  // Buscar producto por código
-  Future<Map<String, dynamic>> getProductoPorCodigo(String codigo) async {
-    final response =
-        await http.get(Uri.parse('$baseUrl/inventario/codigo/$codigo'));
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+// Buscar productos por código o nombre usando /buscar-inventario
+  Future<List<dynamic>> searchProductos(
+      {String? codigo, String? nombre}) async {
+    String url = '$baseUrl/buscar-inventario';
+    List<String> params = [];
+    if (codigo != null && codigo.isNotEmpty) {
+      params
+          .add('nombre=$codigo'); // Usamos "nombre" para buscar códigos también
+    } else if (nombre != null && nombre.isNotEmpty) {
+      params.add('nombre=$nombre');
     }
-    return {};
+    if (params.isNotEmpty) {
+      url += '?' + params.join('&');
+    }
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final productos = jsonDecode(response.body);
+      return productos;
+    }
+    throw Exception('Error al buscar productos');
   }
 
   // Buscar clientes

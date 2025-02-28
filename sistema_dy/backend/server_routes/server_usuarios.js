@@ -4,7 +4,7 @@ const router = express.Router();
 
 const { validateFields, handleError, validatePasswordComplexity } = require('./utils');
 
-// GET /api/usuarios - Listar usuarios de empleados activos
+// GET /api/usuarios - Listar usuarios de empleados activos (cargo obtenido de empleados)
 router.get('/', async (req, res) => {
     try {
         const [results] = await req.db.query(`
@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
                 u.nombre_completo, 
                 u.usuario, 
                 u.tipo_cuenta, 
-                u.cargo, 
+                e.cargo, 
                 u.fecha_creacion, 
                 u.fecha_actualizacion 
             FROM usuarios u

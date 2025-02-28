@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui'; // Para PointerDeviceKind
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -5,6 +6,11 @@ import 'dart:convert';
 import 'editar_empleado_modal.dart';
 import 'nuevo_empleado_modal.dart';
 
+/// EmpleadosScreen: Muestra la lista de empleados.
+/// Nota: El campo "cargo" se obtiene directamente de la tabla "empleados",
+/// lo que garantiza que este dato es la fuente única. La sincronización con
+/// la tabla "usuarios" se realiza en el backend (por ejemplo, con un trigger),
+/// evitando la duplicación y manteniendo la normalización.
 class EmpleadosScreen extends StatefulWidget {
   const EmpleadosScreen({super.key});
 
@@ -17,6 +23,7 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
   List<Map<String, dynamic>> empleados = [];
   List<Map<String, dynamic>> empleadosFiltrados = [];
   final TextEditingController _searchController = TextEditingController();
+  Timer? _timer;
 
   // Variables para filtrar por sucursal
   String selectedSucursalFilter = 'Todas';
@@ -54,6 +61,10 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
     super.initState();
     _fetchEmpleados();
     _searchController.addListener(_filterEmpleados);
+    // Actualizar la vista cada 10 segundos
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _fetchEmpleados();
+    });
   }
 
   Future<void> _fetchEmpleados() async {
@@ -241,6 +252,7 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _searchController.dispose();
     super.dispose();
   }

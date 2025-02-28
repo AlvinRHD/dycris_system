@@ -348,10 +348,10 @@ class _RegistrarProductosState extends State<RegistrarProductos> {
     );
   }
 
- @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    body: Container(
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        body: Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -364,7 +364,8 @@ Widget build(BuildContext context) {
         child: Center(
           child: SingleChildScrollView(
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 600), // Aumentar el ancho máximo
+              constraints: const BoxConstraints(
+                  maxWidth: 600), // Aumentar el ancho máximo
               child: Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -399,7 +400,8 @@ Widget build(BuildContext context) {
                                     icon: Icons.code,
                                   ),
                                 ),
-                                const SizedBox(width: 16), // Espacio entre campos
+                                const SizedBox(
+                                    width: 16), // Espacio entre campos
                                 Expanded(
                                   child: _buildTextField(
                                     controller: _nombreController,
@@ -421,7 +423,8 @@ Widget build(BuildContext context) {
                                     icon: Icons.description,
                                   ),
                                 ),
-                                const SizedBox(width: 16), // Espacio entre campos
+                                const SizedBox(
+                                    width: 16), // Espacio entre campos
                                 Expanded(
                                   child: _buildTextField(
                                     controller: _numeroMotorController,
@@ -443,7 +446,8 @@ Widget build(BuildContext context) {
                                     icon: Icons.car_repair,
                                   ),
                                 ),
-                                const SizedBox(width: 16), // Espacio entre campos
+                                const SizedBox(
+                                    width: 16), // Espacio entre campos
                                 Expanded(
                                   child: _buildTextField(
                                     controller: _precioVentaController,
@@ -467,7 +471,8 @@ Widget build(BuildContext context) {
                                     isNumeric: true,
                                   ),
                                 ),
-                                const SizedBox(width: 16), // Espacio entre campos
+                                const SizedBox(
+                                    width: 16), // Espacio entre campos
                                 Expanded(
                                   child: _buildTextField(
                                     controller: _creditoController,
@@ -491,7 +496,8 @@ Widget build(BuildContext context) {
                                     isNumeric: true,
                                   ),
                                 ),
-                                const SizedBox(width: 16), // Espacio entre campos
+                                const SizedBox(
+                                    width: 16), // Espacio entre campos
                                 Expanded(
                                   child: _buildTextField(
                                     controller: _stockMinimoController,
@@ -514,7 +520,8 @@ Widget build(BuildContext context) {
                                     icon: Icons.date_range,
                                   ),
                                 ),
-                                const SizedBox(width: 16), // Espacio entre campos
+                                const SizedBox(
+                                    width: 16), // Espacio entre campos
                                 Expanded(
                                   child: _buildDateField(
                                     controller: _fechaReingresoController,
@@ -536,7 +543,8 @@ Widget build(BuildContext context) {
                                     icon: Icons.policy,
                                   ),
                                 ),
-                                const SizedBox(width: 16), // Espacio entre campos
+                                const SizedBox(
+                                    width: 16), // Espacio entre campos
                                 Expanded(
                                   child: _buildTextField(
                                     controller: _numeroLoteController,
@@ -576,74 +584,79 @@ Widget build(BuildContext context) {
           ),
         ),
       ),
-    )
+    ));
+  }
+}
+
+Future<String?> _uploadImage(Uint8List imageBytes, String imageName) async {
+  final url = Uri.parse('http://localhost:3000/api/upload'); // Ajusta la URL
+  final request = http.MultipartRequest('POST', url);
+
+  request.files.add(
+    http.MultipartFile.fromBytes(
+      'file',
+      imageBytes,
+      filename: imageName,
+    ),
   );
-}
-}
 
-  Future<String?> _uploadImage(Uint8List imageBytes, String imageName) async {
-    final url = Uri.parse('http://localhost:3000/api/upload'); // Ajusta la URL
-    final request = http.MultipartRequest('POST', url);
-
-    request.files.add(
-      http.MultipartFile.fromBytes(
-        'file',
-        imageBytes,
-        filename: imageName,
-      ),
-    );
-
-    try {
-      final response = await request.send();
-      if (response.statusCode == 200) {
-        final responseData = await response.stream.bytesToString();
-        final jsonResponse = json.decode(responseData);
-        return jsonResponse[
-            'imageUrl']; // Ajusta según la respuesta del servidor
-      } else {
-        print('Error al subir la imagen: ${response.reasonPhrase}');
-        return null;
-      }
-    } catch (e) {
-      print('Error al subir la imagen: $e');
+  try {
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final responseData = await response.stream.bytesToString();
+      final jsonResponse = json.decode(responseData);
+      return jsonResponse['imageUrl']; // Ajusta según la respuesta del servidor
+    } else {
+      print('Error al subir la imagen: ${response.reasonPhrase}');
       return null;
     }
+  } catch (e) {
+    print('Error al subir la imagen: $e');
+    return null;
   }
+}
 
-  Widget _buildDropdownField({
-    required String label,
-    required IconData icon,
-    required List<dynamic> items,
-    String? selectedValue,
-    void Function(String?)? onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: DropdownButtonFormField<String>(
-        value: selectedValue,
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          prefixIcon: Icon(icon),
+Widget _buildDropdownField({
+  required String label,
+  required IconData icon,
+  required List<dynamic> items,
+  String? selectedValue,
+  void Function(String?)? onChanged,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 16.0),
+    child: DropdownButtonFormField<String>(
+      value: selectedValue,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Por favor seleccione $label';
-          }
-          return null;
-        },
-        items: items.map<DropdownMenuItem<String>>((dynamic item) {
-          return DropdownMenuItem<String>(
-            value: item['id']
-                .toString(), // Ajustar según la estructura de tu lista
-            child: Text(item['nombre'] ??
-                item['name'] ??
-                'Desconocido'), // Ajustar según la propiedad de la lista
-          );
-        }).toList(),
+        prefixIcon: Icon(icon),
       ),
-    );
-  }
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Por favor seleccione $label';
+        }
+        return null;
+      },
+      items: items.map<DropdownMenuItem<String>>((dynamic item) {
+        // Verificar el tipo de label para determinar qué campo usar
+        String displayName = '';
+        if (label == "Proveedor") {
+          displayName = item['nombre_comercial'] ?? 'Desconocido'; // Proveedor
+        } else if (label == "Categoría") {
+          displayName = item['nombre'] ?? 'Desconocido'; // Categoría
+        } else if (label == "Sucursal") {
+          displayName = item['nombre'] ?? 'Desconocido'; // Sucursal
+        }
+
+        return DropdownMenuItem<String>(
+          value: item['id'].toString(),
+          child: Text(displayName),
+        );
+      }).toList(),
+    ),
+  );
+}

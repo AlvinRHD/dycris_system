@@ -97,7 +97,7 @@ class _EditarTrasladoScreenState extends State<EditarTrasladoScreen> {
                   "Sucursal Destino: ${widget.traslado['sucursal_destino'] ?? widget.traslado['codigo_sucursal_destino'] ?? 'N/A'}"),
               SizedBox(height: 15),
               Text(
-                  "Empleado: ${widget.traslado['empleado'] ?? widget.traslado['codigo_empleado'] ?? 'N/A'}"), // Prioriza nombre completo
+                  "Empleado: ${widget.traslado['empleado'] ?? widget.traslado['codigo_empleado'] ?? 'N/A'}"),
               SizedBox(height: 15),
               Text(
                   "Fecha: ${widget.traslado['fecha_traslado'] != null ? DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(widget.traslado['fecha_traslado'])) : 'N/A'}"),
@@ -128,10 +128,14 @@ class _EditarTrasladoScreenState extends State<EditarTrasladoScreen> {
                                   border: OutlineInputBorder(),
                                 ),
                                 keyboardType: TextInputType.number,
-                                validator: (value) => value!.isEmpty ||
-                                        int.tryParse(value) == null
-                                    ? "Ingrese un número válido"
-                                    : null,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty)
+                                    return 'Ingrese una cantidad';
+                                  final cantidad = int.tryParse(value);
+                                  if (cantidad == null || cantidad <= 0)
+                                    return 'Cantidad debe ser mayor a 0';
+                                  return null;
+                                },
                               ),
                             ),
                           ],
@@ -149,6 +153,8 @@ class _EditarTrasladoScreenState extends State<EditarTrasladoScreen> {
                     .toList(),
                 onChanged: (value) =>
                     setState(() => _estadoSeleccionado = value!),
+                validator: (value) =>
+                    value == null ? 'Seleccione un estado' : null,
               ),
             ],
           ),

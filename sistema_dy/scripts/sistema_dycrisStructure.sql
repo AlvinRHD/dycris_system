@@ -52,8 +52,8 @@ CREATE TABLE categoria (
     estado ENUM('Activo', 'Inactivo') NOT NULL DEFAULT 'Activo'
 );
 
--- Tabla Proveedores
-CREATE TABLE proveedores (
+-- Tabla Proveedores -- tabla anterior 
+/**CREATE TABLE proveedores (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
     direccion TEXT NOT NULL,
@@ -63,7 +63,48 @@ CREATE TABLE proveedores (
     tipo_persona ENUM('Natural', 'Jurídica') NOT NULL,
     numero_factura_compra VARCHAR(50),
     ley_tributaria TEXT
+);**/
+
+-- tablas nuevas
+CREATE TABLE `proveedores` (
+  `id` int primary key NOT NULL AUTO_INCREMENT,
+  `tipo_proveedor` enum('Natural','Jurídico') NOT NULL,
+  `nombre_comercial` varchar(150) NOT NULL,
+  `correo` varchar(100) NOT NULL unique key,
+  `direccion` text NOT NULL,
+  `telefono` varchar(20) NOT NULL
 );
+select * from proveedores;
+use sistema_dycris;
+
+-- segunda tabla de proveedores
+CREATE TABLE `proveedores_juridicos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `proveedor_id` int(11) NOT NULL,
+  `razon_social` varchar(200) NOT NULL,
+  `nit` varchar(200) NOT NULL,
+  `nrc` text NOT NULL,
+  `giro` varchar(20) NOT NULL,
+  `correspondencia` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `proveedor_id` (`proveedor_id`),
+  CONSTRAINT `proveedores_juridicos_ibfk_1` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`)
+);
+
+-- tercera tabla para proveedores
+CREATE TABLE `proveedores_naturales` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `proveedor_id` int(11) NOT NULL,
+  `nombre_propietario` varchar(200) NOT NULL,
+  `dui` varchar(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `proveedor_id` (`proveedor_id`),
+  CONSTRAINT `proveedores_naturales_ibfk_1` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`)
+);
+
+
+
+
 
 
 
@@ -206,7 +247,7 @@ select * from historial_cambios_ventas;
 CREATE TABLE `detalle_ventas` (
   `idDetalle` int NOT NULL AUTO_INCREMENT,
   `idVentas` int NOT NULL,
-  `codigo_producto` varchar(50) NOT NULL COLLATE utf8mb4_general_ci,  -- Aquí se ajusta la colación
+  `codigo_producto` varchar(50) NOT NULL,  -- Aquí se ajusta la colación
   `nombre` varchar(100) NOT NULL,
   `cantidad` int NOT NULL,
   `precio_unitario` decimal(10,2) NOT NULL,
@@ -216,7 +257,6 @@ CREATE TABLE `detalle_ventas` (
   FOREIGN KEY (`codigo_producto`) REFERENCES `inventario`(`codigo`)  -- Definimos la FK con la tabla inventario
 );
 SHOW FULL COLUMNS FROM inventario;
-drop table detalle_ventas;
 
 
 
@@ -253,11 +293,12 @@ SHOW CREATE TABLE inventario;
 CREATE TABLE detalle_traslados (
   id INT AUTO_INCREMENT PRIMARY KEY,
   traslado_id INT NOT NULL,
-  codigo_inventario VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  codigo_inventario VARCHAR(50)NOT NULL,
   cantidad INT NOT NULL,
   FOREIGN KEY (traslado_id) REFERENCES traslados(id) ON DELETE CASCADE,
   FOREIGN KEY (codigo_inventario) REFERENCES inventario(codigo)
 );
+
 
 
 CREATE TABLE historial_cambios_traslados (
@@ -269,6 +310,7 @@ CREATE TABLE historial_cambios_traslados (
   fecha_cambio DATETIME NOT NULL,
   FOREIGN KEY (traslado_id) REFERENCES traslados(id)
 );
+
 
 
 -- Tabla Ofertas

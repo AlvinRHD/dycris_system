@@ -128,7 +128,7 @@ router.route('/empleados')
         }
     });
 
-// PUT /api/empleados/:id - Actualizar empleado
+// PUT /api/empleados/:id - Actualizar empleado (y sincronizar cargo en usuarios si es necesario)
 router.put('/empleados/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -163,6 +163,11 @@ router.put('/empleados/:id', async (req, res) => {
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: "Empleado no encontrado" });
+        }
+
+        // Si se actualizó el cargo, sincronizarlo en la tabla usuarios (para el empleado correspondiente)
+        if (cargo !== undefined) {
+            await req.db.query("UPDATE usuarios SET cargo = ? WHERE empleado_id = ?", [cargo, id]);
         }
 
         res.json({ message: "Empleado actualizado exitosamente" });

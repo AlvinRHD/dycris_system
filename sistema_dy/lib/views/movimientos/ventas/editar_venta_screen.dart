@@ -37,8 +37,9 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
             .updateVenta(widget.venta['idVentas'], datosActualizados);
         Navigator.pop(context, true);
       } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error al actualizar: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar: $e')),
+        );
       }
     }
   }
@@ -54,11 +55,11 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
       appBar: AppBar(
         title: Text("Editar Venta ${widget.venta['codigo_venta']}"),
         actions: [
-          IconButton(icon: Icon(Icons.save), onPressed: _guardarCambios),
+          IconButton(icon: const Icon(Icons.save), onPressed: _guardarCambios),
         ],
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
@@ -66,31 +67,37 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
             children: [
               // Campos de solo lectura
               Text("Cliente: ${widget.venta['cliente_nombre'] ?? 'N/A'}"),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text("Código: ${widget.venta['codigo_venta'] ?? 'N/A'}"),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text("Empleado: ${widget.venta['empleado_nombre'] ?? 'N/A'}"),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text("Total: \$${total.toStringAsFixed(2)}"),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text("Descuento: ${descuento.toStringAsFixed(2)}%"),
-              SizedBox(height: 20),
-              // Campos editables
+              const SizedBox(height: 20),
+              // Campos editables con validaciones
               DropdownButtonFormField<String>(
                 value: _tipoFactura,
-                decoration: InputDecoration(
-                    labelText: 'Tipo de Factura', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de Factura',
+                  border: OutlineInputBorder(),
+                ),
                 items: ['Consumidor Final', 'Crédito Fiscal', 'Ticket']
                     .map((tipo) =>
                         DropdownMenuItem(value: tipo, child: Text(tipo)))
                     .toList(),
                 onChanged: (value) => setState(() => _tipoFactura = value),
+                validator: (value) =>
+                    value == null ? 'Seleccione un tipo de factura' : null,
               ),
-              SizedBox(height: 15),
+              const SizedBox(height: 15),
               DropdownButtonFormField<String>(
                 value: _metodoPago,
-                decoration: InputDecoration(
-                    labelText: 'Método de Pago', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Método de Pago',
+                  border: OutlineInputBorder(),
+                ),
                 items: [
                   'Efectivo',
                   'Tarjeta de Crédito',
@@ -100,18 +107,34 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
                         DropdownMenuItem(value: metodo, child: Text(metodo)))
                     .toList(),
                 onChanged: (value) => setState(() => _metodoPago = value),
+                validator: (value) =>
+                    value == null ? 'Seleccione un método de pago' : null,
               ),
-              SizedBox(height: 15),
+              const SizedBox(height: 15),
               TextFormField(
                 controller: _notasController,
-                decoration: InputDecoration(
-                    labelText: 'Notas', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Notas (Motivo del cambio)',
+                  border: OutlineInputBorder(),
+                ),
                 maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Ingrese el motivo del cambio';
+                  }
+                  return null;
+                },
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _notasController.dispose();
+    super.dispose();
   }
 }

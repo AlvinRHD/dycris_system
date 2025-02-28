@@ -45,23 +45,100 @@ class _InventarioScreenState extends State<InventarioScreen> {
     }
   }
 
-  String _formatDate(String date) {
-    try {
-      final DateTime parsedDate = DateTime.parse(date).toLocal();
-      final DateFormat formatter = DateFormat('dd/MM/yyyy HH:mm');
-      return formatter.format(parsedDate);
-    } catch (e) {
-      return 'Fecha inválida';
-    }
-  }
-
   void _filterProductos() {
     String query = _searchController.text.toLowerCase();
     setState(() {
-      productosFiltrados = inventario.where((inventario) {
-        return (inventario['nombre'] as String).toLowerCase().contains(query);
+      productosFiltrados = inventario.where((producto) {
+        return (producto['nombre'] as String).toLowerCase().contains(query);
       }).toList();
     });
+  }
+
+  void _showDetallesProducto(String nombre, String descripcion) async {
+    final url = Uri.parse(
+        'http://localhost:3000/api/inventario/detalles?nombre=$nombre&descripcion=$descripcion');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> detalles = json.decode(response.body);
+        _showModalDetalles(detalles);
+      } else {
+        throw Exception('Error al cargar los detalles del producto');
+      }
+    } catch (error) {
+      print('Error al obtener los detalles del producto: $error');
+    }
+  }
+
+  void _showModalDetalles(List<dynamic> detalles) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Detalles del Producto'),
+          content: SingleChildScrollView(
+            child: DataTable(
+              columnSpacing: 40,
+              horizontalMargin: 24,
+              headingRowHeight: 56,
+              dataRowHeight: 80,
+              headingRowColor: MaterialStateProperty.resolveWith<Color>(
+                (Set<MaterialState> states) => Colors.grey[50]!,
+              ),
+              columns: const [
+                DataColumn(
+                    label: Text('Código',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Text('Nombre',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Text('Descripción',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Text('Número de Motor',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Text('Número de Chasis',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Text('Número de Póliza',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Text('Número de Lote',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Text('Stock Existencia',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+              ],
+              rows: detalles.map<DataRow>((producto) {
+                return DataRow(
+                  cells: [
+                    DataCell(Text(producto['codigo'] ?? '')),
+                    DataCell(Text(producto['nombre'] ?? '')),
+                    DataCell(Text(producto['descripcion'] ?? '')),
+                    DataCell(Text(producto['numero_motor'] ?? '')),
+                    DataCell(Text(producto['numero_chasis'] ?? '')),
+                    DataCell(Text(producto['numero_poliza'] ?? '')),
+                    DataCell(Text(producto['numero_lote'] ?? '')),
+                    DataCell(
+                        Text(producto['stock_existencia'].toString() ?? '0')),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cerrar'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -162,9 +239,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
                             MaterialStateProperty.resolveWith<Color>(
                           (Set<MaterialState> states) => Colors.grey[50]!,
                         ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black12),
-                        ),
                         columns: const [
                           DataColumn(
                               label: Text('Código',
@@ -179,7 +253,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold))),
                           DataColumn(
-                              label: Text('Descripcion',
+                              label: Text('Descripción',
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold))),
                           DataColumn(
@@ -191,11 +265,11 @@ class _InventarioScreenState extends State<InventarioScreen> {
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold))),
                           DataColumn(
-                              label: Text('Existencia',
+                              label: Text('Stock Total',
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold))),
                           DataColumn(
-                              label: Text('Stock Minimo',
+                              label: Text('Stock Mínimo',
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold))),
                           DataColumn(
@@ -228,18 +302,28 @@ class _InventarioScreenState extends State<InventarioScreen> {
                                       },
                                     ),
                                   ),
-                                  DataCell(Text(inventario['nombre'] ?? '')),
+                                  DataCell(
+                                    GestureDetector(
+                                      onTap: () {
+                                        _showDetallesProducto(
+                                            inventario['nombre'],
+                                            inventario['descripcion']);
+                                      },
+                                      child: Text(inventario['nombre'] ?? ''),
+                                    ),
+                                  ),
                                   DataCell(
                                       Text(inventario['descripcion'] ?? '')),
                                   DataCell(Text(
                                       '\$${inventario['costo']?.toString() ?? '0'}')),
-
-                                   DataCell(Text(
-                                      '\$${inventario['precio_venta']?.toString() ?? '0'}')),
-                                  DataCell(Text(inventario['stock_existencia']
-                                      .toString())),
                                   DataCell(Text(
-                                      inventario['stock_minimo'].toString())),
+                                      '\$${inventario['precio_venta']?.toString() ?? '0'}')),
+                                  DataCell(Text(inventario['stock_total']
+                                          .toString() ??
+                                      '0')), // Asegúrate de que este campo esté en la respuesta del backend
+                                  DataCell(Text(
+                                      inventario['stock_minimo'].toString() ??
+                                          '0')),
                                   DataCell(
                                     Row(
                                       children: [
@@ -432,10 +516,10 @@ class _InventarioScreenState extends State<InventarioScreen> {
 
   ButtonStyle _alertButtonStyle() {
     return ButtonStyle(
-      backgroundColor: MaterialStateProperty.resolveWith<Color?>(
-        (Set<MaterialState> states) {
-          if (states.contains(MaterialState.hovered) ||
-              states.contains(MaterialState.focused)) {
+      backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+        (Set<WidgetState> states) {
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.focused)) {
             return Colors.grey[200];
           }
           return Colors.transparent;
@@ -445,27 +529,20 @@ class _InventarioScreenState extends State<InventarioScreen> {
   }
 
   Future<void> _updateProducto(
-    int id,
     String nombre,
     String descripcion,
     String precioVenta,
-    String stockExistente,
     String motivoCambio,
     String? imageUrl, // Nueva URL de la imagen
   ) async {
-    final url = Uri.parse('http://localhost:3000/api/inventario/$id');
+    final url = Uri.parse('http://localhost:3000/api/inventario/edit');
     final Map<String, dynamic> body = {
       'nombre': nombre,
       'descripcion': descripcion,
       'precio_venta': precioVenta,
-      'stock_existencia': stockExistente,
       'motivo': motivoCambio,
       'imagen': imageUrl,
     };
-
-    if (imageUrl != null) {
-      body['imagen'] = imageUrl;
-    }
 
     try {
       final response = await http.put(
@@ -508,11 +585,8 @@ class _InventarioScreenState extends State<InventarioScreen> {
         TextEditingController(text: productoData['descripcion'] ?? '');
     final TextEditingController precioVentaController =
         TextEditingController(text: productoData['precio_venta'] ?? '');
-    final TextEditingController stockExistenteController =
-        TextEditingController(
-            text: productoData['stock_existencia'].toString());
     final TextEditingController motivoCambioController =
-        TextEditingController();
+        TextEditingController(text: ''); // Inicializar con un valor vacío
 
     Uint8List? imageBytes;
     String? imageName;
@@ -540,8 +614,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
                         descripcionController),
                     _buildTextField('Precio de Venta', Icons.attach_money,
                         precioVentaController),
-                    _buildTextField('Stock Existente', Icons.storage,
-                        stockExistenteController),
                     _buildTextField('Motivo del Cambio', Icons.edit_note,
                         motivoCambioController),
 
@@ -556,7 +628,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         child: Image.network(
-                          'http://localhost:3000$currentImageUrl',
+                          currentImageUrl, // Usar la URL actual sin prefijo
                           height: 100,
                           fit: BoxFit.cover,
                         ),
@@ -587,10 +659,10 @@ class _InventarioScreenState extends State<InventarioScreen> {
               actions: [
                 ElevatedButton(
                   onPressed: () async {
-                    if (productoData['id'] == null) {
+                    if (productoData['nombre'] == null) {
                       await _showAlertDialog(
                         'Error',
-                        'No se pudo obtener el ID del producto',
+                        'No se pudo obtener el nombre del producto',
                         Icons.error,
                         Colors.red,
                       );
@@ -600,7 +672,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
                     if (nombreController.text.trim().isEmpty ||
                         descripcionController.text.trim().isEmpty ||
                         precioVentaController.text.trim().isEmpty ||
-                        stockExistenteController.text.trim().isEmpty ||
                         motivoCambioController.text.trim().isEmpty) {
                       await _showAlertDialog(
                         'Error',
@@ -623,11 +694,9 @@ class _InventarioScreenState extends State<InventarioScreen> {
 
                     // Actualizar el producto con la nueva imagen
                     await _updateProducto(
-                      productoData['id'],
                       nombreController.text.trim(),
                       descripcionController.text.trim(),
                       precioVentaController.text.trim(),
-                      stockExistenteController.text.trim(),
                       motivoCambioController.text.trim(),
                       nuevaImagenUrl, // Pasar la URL de la imagen
                     );
