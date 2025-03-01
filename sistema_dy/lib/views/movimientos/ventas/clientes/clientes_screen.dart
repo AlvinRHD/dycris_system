@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:sistema_dy/views/navigation_bar.dart';
 import 'agregar_cliente_screen.dart';
 import 'cliente_widgets.dart';
 import 'editar_cliente_screen.dart';
@@ -86,7 +87,8 @@ class _ClientesScreenState extends State<ClientesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return CustomNavigationBar(
+        child: Scaffold(
       appBar: AppBar(
         title: Text('Clientes', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
@@ -333,6 +335,6 @@ class _ClientesScreenState extends State<ClientesScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

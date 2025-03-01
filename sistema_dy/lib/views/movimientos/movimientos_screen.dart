@@ -5,14 +5,45 @@ import 'salidas_screen.dart';
 import 'ofertas/ofertas_screen.dart';
 import 'ventas/ventas_screen.dart';
 
-class MovimientosScreen extends StatelessWidget {
+import 'ventas/clientes/clientes_screen.dart'; // Para navegar a ClientesScreen
+import 'ventas/clientes/clientes_api.dart'; // Para usar ClientesApi
+
+import '../navigation_bar.dart';
+
+class MovimientosScreen extends StatefulWidget {
   const MovimientosScreen({super.key});
+
+  @override
+  _MovimientosScreenState createState() => _MovimientosScreenState();
+}
+
+class _MovimientosScreenState extends State<MovimientosScreen> {
+  int _totalClientes = 0; // Nueva variable
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarTotalClientes(); // Cargar total al iniciar
+  }
+
+  // Nueva función para obtener el total de clientes
+  Future<void> _cargarTotalClientes() async {
+    try {
+      final response = await ClientesApi().getClientes(page: 1, limit: 10);
+      setState(() {
+        _totalClientes = response['total'];
+      });
+    } catch (e) {
+      debugPrint("Error cargando total de clientes: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    return CustomNavigationBar(
+        child: Scaffold(
       appBar: AppBar(
         title: const Text('Movimientos'),
         elevation: 2,
@@ -64,12 +95,19 @@ class MovimientosScreen extends StatelessWidget {
                   color: Colors.purple,
                   screen: OfertasScreen(),
                 ),
+                _buildMovimientoCard(
+                  context: context,
+                  title: '$_totalClientes\nClientes',
+                  icon: Icons.people_outline,
+                  color: Colors.purple,
+                  screen: ClientesScreen(),
+                ),
               ],
             );
           },
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildMovimientoCard({

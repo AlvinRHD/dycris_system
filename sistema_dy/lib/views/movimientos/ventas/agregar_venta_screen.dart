@@ -28,6 +28,24 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   final TextEditingController _descuentoController = TextEditingController();
   final TextEditingController _empleadoController = TextEditingController();
 
+  ////campos de venta asociados, posiblemente al terminar con pruebas de api ventas las vamos a quitar
+  final TextEditingController _facturaController = TextEditingController();
+  final TextEditingController _creditoFiscalController =
+      TextEditingController();
+  final TextEditingController _facturaExportacionController =
+      TextEditingController();
+  final TextEditingController _notaCreditoController = TextEditingController();
+  final TextEditingController _notaDebitoController = TextEditingController();
+  final TextEditingController _notaRemisionController = TextEditingController();
+  final TextEditingController _liquidacionController = TextEditingController();
+  final TextEditingController _retencionController = TextEditingController();
+  final TextEditingController _contableLiquidacionController =
+      TextEditingController();
+  final TextEditingController _donacionController = TextEditingController();
+  final TextEditingController _sujetoExcluidoController =
+      TextEditingController();
+  ////campos de venta asociados, posiblemente al terminar con pruebas de api ventas las vamos a quitar
+
   List<dynamic> _clientes = [];
   List<dynamic> _productosSugeridos = [];
   Map<String, dynamic>? _clienteSeleccionado;
@@ -270,8 +288,23 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
         'fecha_venta': DateFormat('yyyy-MM-dd').format(DateTime.now()),
         'descripcion_compra': _notasController.text,
         'productos': _productosSeleccionados,
+        'factura': _facturaController.text,
+        //campos agregados asociados que posiblemente vamos a eliminar
+        'comprobante_credito_fiscal': _creditoFiscalController.text,
+        'factura_exportacion': _facturaExportacionController.text,
+        'nota_credito': _notaCreditoController.text,
+        'nota_debito': _notaDebitoController.text,
+        'nota_remision': _notaRemisionController.text,
+        'comprobante_liquidacion': _liquidacionController.text,
+        'comprobante_retencion': _retencionController.text,
+        'documento_contable_liquidacion': _contableLiquidacionController.text,
+        'comprobante_donacion': _donacionController.text,
+        'factura_sujeto_excluido': _sujetoExcluidoController.text,
+        //campos agregados asociados que posiblemente vamos a eliminar
+
         if (codigoAutorizacion != null)
           'codigo_autorizacion': codigoAutorizacion,
+        // No necesitamos enviar sucursal_id desde el frontend, el backend lo maneja por defecto
       };
       await VentaApi().addVenta(nuevaVenta);
       Navigator.pop(context, true);
@@ -334,11 +367,25 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Sección: Información General
+              Text(
+                'Información General',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
               TextFormField(
                 controller: _empleadoController,
                 decoration: InputDecoration(labelText: "Empleado"),
                 readOnly: true,
+              ),
+              SizedBox(height: 20),
+
+              // Sección: Agregar Cliente
+              Text(
+                'Agregar Cliente',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
               FocusScope(
@@ -347,8 +394,9 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                 child: TextFormField(
                   controller: _clienteController,
                   decoration: InputDecoration(
-                      labelText: "Buscar Cliente",
-                      prefixIcon: Icon(Icons.search)),
+                    labelText: "Buscar Cliente",
+                    prefixIcon: Icon(Icons.search),
+                  ),
                   validator: (value) => _clienteSeleccionado == null
                       ? 'Seleccione un cliente'
                       : null,
@@ -380,6 +428,14 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                 decoration: InputDecoration(labelText: "NIT"),
                 readOnly: true,
               ),
+              SizedBox(height: 20),
+
+              // Sección: Detalles de la Venta
+              Text(
+                'Detalles de la Venta',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 value: _tipoFactura,
                 decoration: InputDecoration(labelText: "Tipo de Factura"),
@@ -411,15 +467,37 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                 decoration: InputDecoration(labelText: "Notas"),
                 maxLines: 2,
               ),
+              TextFormField(
+                controller: _descuentoController,
+                decoration: InputDecoration(labelText: "Descuento (%)"),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  final descuento = double.tryParse(value);
+                  if (descuento == null || descuento < 0 || descuento > 100) {
+                    return 'Descuento debe estar entre 0 y 100';
+                  }
+                  return null;
+                },
+                onChanged: (_) => _calcularTotales(),
+              ),
               SizedBox(height: 20),
+
+              // Sección: Agregar Producto
+              Text(
+                'Agregar Producto',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
               FocusScope(
                 onFocusChange: (focus) =>
                     setState(() => _productoTextFieldFocus = focus),
                 child: TextFormField(
                   controller: _busquedaProductoController,
                   decoration: InputDecoration(
-                      labelText: "Buscar Producto (Código o Nombre)",
-                      prefixIcon: Icon(Icons.search)),
+                    labelText: "Buscar Producto (Código o Nombre)",
+                    prefixIcon: Icon(Icons.search),
+                  ),
                   onChanged: _buscarProductos,
                   validator: (value) => _productosSeleccionados.isEmpty
                       ? 'Agregue al menos un producto'
@@ -496,20 +574,14 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                     );
                   },
                 ),
-              TextFormField(
-                controller: _descuentoController,
-                decoration: InputDecoration(labelText: "Descuento (%)"),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return null;
-                  final descuento = double.tryParse(value);
-                  if (descuento == null || descuento < 0 || descuento > 100) {
-                    return 'Descuento debe estar entre 0 y 100';
-                  }
-                  return null;
-                },
-                onChanged: (_) => _calcularTotales(),
+              SizedBox(height: 20),
+
+              // Sección: Totales
+              Text(
+                'Totales',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
+              SizedBox(height: 10),
               TextFormField(
                 controller: _subtotalController,
                 decoration: InputDecoration(labelText: "Subtotal"),
@@ -526,6 +598,97 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                 readOnly: true,
               ),
               SizedBox(height: 20),
+
+              // Sección: Documentos Asociados
+              Text(
+                'Documentos Asociados',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              TextFormField(
+                controller: _facturaController,
+                decoration: InputDecoration(labelText: "Factura"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese el número de factura'
+                    : null,
+              ),
+              TextFormField(
+                controller: _creditoFiscalController,
+                decoration:
+                    InputDecoration(labelText: "Comprobante Crédito Fiscal"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese el comprobante'
+                    : null,
+              ),
+              TextFormField(
+                controller: _facturaExportacionController,
+                decoration: InputDecoration(labelText: "Factura Exportación"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese la factura de exportación'
+                    : null,
+              ),
+              TextFormField(
+                controller: _notaCreditoController,
+                decoration: InputDecoration(labelText: "Nota Crédito"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese la nota de crédito'
+                    : null,
+              ),
+              TextFormField(
+                controller: _notaDebitoController,
+                decoration: InputDecoration(labelText: "Nota Débito"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese la nota de débito'
+                    : null,
+              ),
+              TextFormField(
+                controller: _notaRemisionController,
+                decoration: InputDecoration(labelText: "Nota Remisión"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese la nota de remisión'
+                    : null,
+              ),
+              TextFormField(
+                controller: _liquidacionController,
+                decoration:
+                    InputDecoration(labelText: "Comprobante Liquidación"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese el comprobante de liquidación'
+                    : null,
+              ),
+              TextFormField(
+                controller: _retencionController,
+                decoration: InputDecoration(labelText: "Comprobante Retención"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese el comprobante de retención'
+                    : null,
+              ),
+              TextFormField(
+                controller: _contableLiquidacionController,
+                decoration: InputDecoration(
+                    labelText: "Documento Contable Liquidación"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese el documento contable'
+                    : null,
+              ),
+              TextFormField(
+                controller: _donacionController,
+                decoration: InputDecoration(labelText: "Comprobante Donación"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese el comprobante de donación'
+                    : null,
+              ),
+              TextFormField(
+                controller: _sujetoExcluidoController,
+                decoration:
+                    InputDecoration(labelText: "Factura Sujeto Excluido"),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese la factura sujeto excluido'
+                    : null,
+              ),
+              SizedBox(height: 20),
+
+              // Botón Guardar
               ElevatedButton(
                   onPressed: _guardarVenta, child: Text("Guardar Venta")),
             ],
@@ -550,6 +713,19 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     _cantidadController.dispose();
     _descuentoController.dispose();
     _empleadoController.dispose();
+
+    ////campos de venta asociados, posiblemente al terminar con pruebas de api ventas las vamos a quitar
+    _creditoFiscalController.dispose();
+    _facturaExportacionController.dispose();
+    _notaCreditoController.dispose();
+    _notaDebitoController.dispose();
+    _notaRemisionController.dispose();
+    _liquidacionController.dispose();
+    _retencionController.dispose();
+    _contableLiquidacionController.dispose();
+    _donacionController.dispose();
+    _sujetoExcluidoController.dispose();
+    ////campos de venta asociados, posiblemente al terminar con pruebas de api ventas las vamos a quitar
     super.dispose();
   }
 }

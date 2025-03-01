@@ -37,4 +37,14 @@ class VentaApiTemporal {
     }
     throw Exception('Error al cargar sucursales: ${response.body}');
   }
+
+  Future<void> eliminarAsignacionManual(int asignacionId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/ventas/sucursal-manual/$asignacionId'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Error al eliminar asignación: ${response.body}');
+    }
+  }
 }

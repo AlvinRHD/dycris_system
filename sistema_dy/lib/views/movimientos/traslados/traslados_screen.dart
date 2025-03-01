@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:sistema_dy/views/navigation_bar.dart';
 import 'agregar_traslado_screen.dart';
 import 'editar_traslado_screen.dart';
 import 'traslados_api.dart';
@@ -94,200 +95,203 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Gestión de Traslados',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => AgregarTrasladoScreen()),
-                );
-                if (result == true) _cargarTraslados();
-              },
-              icon: Icon(Icons.add),
-              label: Text("Nuevo Traslado"),
+    return CustomNavigationBar(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Gestión de Traslados',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => AgregarTrasladoScreen()),
+                  );
+                  if (result == true) _cargarTraslados();
+                },
+                icon: Icon(Icons.add),
+                label: Text("Nuevo Traslado"),
+              ),
             ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar por código o producto...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
+          ],
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar por código o producto...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: selectedSucursal,
-                    decoration: InputDecoration(
-                        labelText: 'Filtrar por Sucursal Origen',
-                        border: OutlineInputBorder()),
-                    items: [
-                      DropdownMenuItem(
-                          value: null, child: Text('Todas las sucursales')),
-                      ...sucursales.map((s) => DropdownMenuItem<String>(
-                            value: s['codigo'].toString(),
-                            child: Text(s['nombre'] ?? s['codigo'].toString()),
-                          )),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedSucursal = value;
-                        _page = 1;
-                        _cargarTraslados();
-                      });
-                    },
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: selectedSucursal,
+                      decoration: InputDecoration(
+                          labelText: 'Filtrar por Sucursal Origen',
+                          border: OutlineInputBorder()),
+                      items: [
+                        DropdownMenuItem(
+                            value: null, child: Text('Todas las sucursales')),
+                        ...sucursales.map((s) => DropdownMenuItem<String>(
+                              value: s['codigo'].toString(),
+                              child:
+                                  Text(s['nombre'] ?? s['codigo'].toString()),
+                            )),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedSucursal = value;
+                          _page = 1;
+                          _cargarTraslados();
+                        });
+                      },
+                    ),
                   ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: traslados.isEmpty
+                  ? Center(child: Text("No hay traslados disponibles"))
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: [
+                          DataColumn(label: Text('Código')),
+                          DataColumn(label: Text('Productos')),
+                          DataColumn(label: Text('Origen')),
+                          DataColumn(label: Text('Destino')),
+                          DataColumn(label: Text('Empleado')), // Nueva columna
+                          DataColumn(label: Text('Fecha')),
+                          DataColumn(label: Text('Estado')),
+                          DataColumn(label: Text('Acciones')),
+                        ],
+                        rows: traslados.map((traslado) {
+                          final productos = traslado['productos'] != null
+                              ? (traslado['productos'] as List)
+                                  .map((p) =>
+                                      "${p['producto_nombre']} (${p['cantidad']})")
+                                  .join(", ")
+                              : 'N/A';
+                          return DataRow(cells: [
+                            DataCell(Text(
+                                traslado['codigo_traslado']?.toString() ??
+                                    'N/A')),
+                            DataCell(DetalleTrasladoWidget(
+                                productos: traslado['productos'] ?? [])),
+                            DataCell(Text(
+                                traslado['sucursal_origen']?.toString() ??
+                                    traslado['codigo_sucursal_origen'] ??
+                                    'N/A')),
+                            DataCell(Text(
+                                traslado['sucursal_destino']?.toString() ??
+                                    traslado['codigo_sucursal_destino'] ??
+                                    'N/A')),
+                            DataCell(Text(traslado['empleado']?.toString() ??
+                                'N/A')), // Mostrar empleado
+                            DataCell(traslado['fecha_traslado'] != null
+                                ? Text(DateFormat('dd/MM/yyyy HH:mm').format(
+                                    DateTime.parse(traslado['fecha_traslado'])))
+                                : Text('N/A')),
+                            DataCell(
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 4, horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: traslado['estado'] == 'Completado'
+                                      ? Colors.green[100]
+                                      : traslado['estado'] == 'Cancelado'
+                                          ? Colors.red[100]
+                                          : Colors.blue[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  traslado['estado']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    color: traslado['estado'] == 'Completado'
+                                        ? Colors.green[700]
+                                        : traslado['estado'] == 'Cancelado'
+                                            ? Colors.red[700]
+                                            : Colors.blue[700],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.history),
+                                    onPressed: () => showDialog(
+                                      context: context,
+                                      builder: (_) =>
+                                          HistorialCambiosTrasladosDialog(
+                                        trasladoId: traslado['id'],
+                                        codigoTraslado:
+                                            traslado['codigo_traslado'],
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _editarTraslado(traslado),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () =>
+                                        _eliminarTraslado(traslado['id']),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ]);
+                        }).toList(),
+                      ),
+                    ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: _page > 1
+                      ? () => setState(() {
+                            _page--;
+                            _cargarTraslados();
+                          })
+                      : null,
+                  child: Text("Anterior"),
+                ),
+                SizedBox(width: 20),
+                Text("Página $_page de ${(_total / _limit).ceil()}"),
+                SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed: _page < (_total / _limit).ceil()
+                      ? () => setState(() {
+                            _page++;
+                            _cargarTraslados();
+                          })
+                      : null,
+                  child: Text("Siguiente"),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: traslados.isEmpty
-                ? Center(child: Text("No hay traslados disponibles"))
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: [
-                        DataColumn(label: Text('Código')),
-                        DataColumn(label: Text('Productos')),
-                        DataColumn(label: Text('Origen')),
-                        DataColumn(label: Text('Destino')),
-                        DataColumn(label: Text('Empleado')), // Nueva columna
-                        DataColumn(label: Text('Fecha')),
-                        DataColumn(label: Text('Estado')),
-                        DataColumn(label: Text('Acciones')),
-                      ],
-                      rows: traslados.map((traslado) {
-                        final productos = traslado['productos'] != null
-                            ? (traslado['productos'] as List)
-                                .map((p) =>
-                                    "${p['producto_nombre']} (${p['cantidad']})")
-                                .join(", ")
-                            : 'N/A';
-                        return DataRow(cells: [
-                          DataCell(Text(
-                              traslado['codigo_traslado']?.toString() ??
-                                  'N/A')),
-                          DataCell(DetalleTrasladoWidget(
-                              productos: traslado['productos'] ?? [])),
-                          DataCell(Text(
-                              traslado['sucursal_origen']?.toString() ??
-                                  traslado['codigo_sucursal_origen'] ??
-                                  'N/A')),
-                          DataCell(Text(
-                              traslado['sucursal_destino']?.toString() ??
-                                  traslado['codigo_sucursal_destino'] ??
-                                  'N/A')),
-                          DataCell(Text(traslado['empleado']?.toString() ??
-                              'N/A')), // Mostrar empleado
-                          DataCell(traslado['fecha_traslado'] != null
-                              ? Text(DateFormat('dd/MM/yyyy HH:mm').format(
-                                  DateTime.parse(traslado['fecha_traslado'])))
-                              : Text('N/A')),
-                          DataCell(
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                  vertical: 4, horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: traslado['estado'] == 'Completado'
-                                    ? Colors.green[100]
-                                    : traslado['estado'] == 'Cancelado'
-                                        ? Colors.red[100]
-                                        : Colors.blue[100],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                traslado['estado']?.toString() ?? 'N/A',
-                                style: TextStyle(
-                                  color: traslado['estado'] == 'Completado'
-                                      ? Colors.green[700]
-                                      : traslado['estado'] == 'Cancelado'
-                                          ? Colors.red[700]
-                                          : Colors.blue[700],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.history),
-                                  onPressed: () => showDialog(
-                                    context: context,
-                                    builder: (_) =>
-                                        HistorialCambiosTrasladosDialog(
-                                      trasladoId: traslado['id'],
-                                      codigoTraslado:
-                                          traslado['codigo_traslado'],
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.edit, color: Colors.blue),
-                                  onPressed: () => _editarTraslado(traslado),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () =>
-                                      _eliminarTraslado(traslado['id']),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ]);
-                      }).toList(),
-                    ),
-                  ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: _page > 1
-                    ? () => setState(() {
-                          _page--;
-                          _cargarTraslados();
-                        })
-                    : null,
-                child: Text("Anterior"),
-              ),
-              SizedBox(width: 20),
-              Text("Página $_page de ${(_total / _limit).ceil()}"),
-              SizedBox(width: 20),
-              ElevatedButton(
-                onPressed: _page < (_total / _limit).ceil()
-                    ? () => setState(() {
-                          _page++;
-                          _cargarTraslados();
-                        })
-                    : null,
-                child: Text("Siguiente"),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-        ],
+            SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

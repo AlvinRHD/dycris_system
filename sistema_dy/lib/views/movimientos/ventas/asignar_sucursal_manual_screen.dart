@@ -22,6 +22,7 @@ class _AsignarSucursalManualScreenState
   List<dynamic> _asignaciones = [];
   bool _isLoadingSucursales = false;
   bool _isLoadingAsignaciones = false;
+  List<dynamic> _asignacionesOriginales = []; // Nueva variable en la clase
 
   @override
   void initState() {
@@ -53,6 +54,7 @@ class _AsignarSucursalManualScreenState
     try {
       final asignaciones = await VentaApiTemporal().getAsignacionesManuales();
       setState(() {
+        _asignacionesOriginales = asignaciones; // Guardar copia original
         _asignaciones = asignaciones;
         _isLoadingAsignaciones = false;
       });
@@ -92,6 +94,20 @@ class _AsignarSucursalManualScreenState
           SnackBar(content: Text('Error al asignar sucursal: $e')),
         );
       }
+    }
+  }
+
+  void _eliminarAsignacion(int asignacionId) async {
+    try {
+      await VentaApiTemporal().eliminarAsignacionManual(asignacionId);
+      _cargarAsignaciones(); // Refrescar la tabla
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Asignación eliminada correctamente')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al eliminar asignación: $e')),
+      );
     }
   }
 
@@ -173,6 +189,34 @@ class _AsignarSucursalManualScreenState
               ),
             ),
             SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              value: null,
+              decoration: InputDecoration(
+                labelText: 'Filtrar por Sucursal',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                DropdownMenuItem<String>(value: null, child: Text('Todas')),
+                ..._sucursales.map((sucursal) => DropdownMenuItem<String>(
+                      value: sucursal['nombre'],
+                      child: Text(sucursal['nombre']),
+                    )),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  if (value == null) {
+                    _asignaciones =
+                        List.from(_asignacionesOriginales); // Mostrar todas
+                  } else {
+                    _asignaciones = _asignacionesOriginales
+                        .where((asignacion) =>
+                            asignacion['sucursal_nombre'] == value)
+                        .toList();
+                  }
+                });
+              },
+            ),
+            SizedBox(height: 10),
             // Sección de tabla de asignaciones
             Text(
               'Ventas Asignadas Manualmente',
@@ -195,6 +239,7 @@ class _AsignarSucursalManualScreenState
                               DataColumn(label: Text('Total')),
                               DataColumn(label: Text('Descuento')),
                               DataColumn(label: Text('Fecha Asignación')),
+                              DataColumn(label: Text('Acciones')),
                             ],
                             rows: _asignaciones.map((asignacion) {
                               final productos = asignacion['productos']
@@ -227,6 +272,11 @@ class _AsignarSucursalManualScreenState
                                       ? '${double.tryParse(asignacion['descuento'].toString())?.toStringAsFixed(2)}%'
                                       : '0.00%')),
                                   DataCell(Text(fecha)),
+                                  DataCell(IconButton(
+                                    icon: Icon(Icons.delete),
+                                    onPressed: () =>
+                                        _eliminarAsignacion(asignacion['id']),
+                                  )),
                                 ],
                               );
                             }).toList(),

@@ -65,5 +65,25 @@ router.get('/ventas/sucursal-manual', async (req, res) => {
   }
 });
 
+// Eliminar una asignación manual
+router.delete('/ventas/sucursal-manual/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [result] = await req.db.query(
+      'DELETE FROM ventas_sucursales_manual WHERE id = ?',
+      [id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Asignación no encontrada' });
+    }
+    res.json({ message: 'Asignación eliminada correctamente' });
+  } catch (err) {
+    console.error('Error al eliminar asignación manual:', err);
+    res.status(500).json({ message: 'Error al eliminar asignación', error: err.message });
+  }
+});
+
+
+
 // Exportar el router
 module.exports = router;

@@ -215,6 +215,13 @@ select * from ventas;
 -- Agregar campo descuento a la tabla ventas oara autorizacion
 ALTER TABLE `ventas` ADD COLUMN `descuento` DECIMAL(5,2) DEFAULT 0.00;
 
+use  sistema_dycris;
+ALTER TABLE ventas
+ADD COLUMN sucursal_id INT NOT NULL DEFAULT 4,
+ADD FOREIGN KEY (sucursal_id) REFERENCES sucursal(id);
+
+select * from historial_cambios_clientes;
+
 -- Crear tabla para códigos de autorización
 CREATE TABLE `codigos_autorizacion` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,

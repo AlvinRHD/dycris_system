@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../navigation_bar.dart';
 import 'agregar_venta_screen.dart';
 import 'asignar_sucursal_manual_screen.dart';
 import 'editar_venta_screen.dart';
@@ -120,7 +121,8 @@ class _VentasScreenState extends State<VentasScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return CustomNavigationBar(
+        child: Scaffold(
       appBar: AppBar(
         title: Text('Ventas', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
@@ -184,6 +186,26 @@ class _VentasScreenState extends State<VentasScreen> {
                                 DataColumn(label: Text('Descripción')),
                                 DataColumn(label: Text('Total')),
                                 DataColumn(label: Text('Descuento')),
+                                DataColumn(label: Text('Sucursal')),
+                                DataColumn(label: Text('Factura')), // Nuevo
+                                DataColumn(
+                                    label: Text('Crédito Fiscal')), // Nuevo
+                                DataColumn(
+                                    label:
+                                        Text('Factura Exportación')), // Nuevo
+                                DataColumn(
+                                    label: Text('Nota Crédito')), // Nuevo
+                                DataColumn(label: Text('Nota Débito')), // Nuevo
+                                DataColumn(
+                                    label: Text('Nota Remisión')), // Nuevo
+                                DataColumn(label: Text('Liquidación')), // Nuevo
+                                DataColumn(label: Text('Retención')), // Nuevo
+                                DataColumn(
+                                    label:
+                                        Text('Contable Liquidación')), // Nuevo
+                                DataColumn(label: Text('Donación')), // Nuevo
+                                DataColumn(
+                                    label: Text('Sujeto Excluido')), // Nuevo
                                 DataColumn(label: Text('Acciones')),
                               ]
                             : [
@@ -193,6 +215,7 @@ class _VentasScreenState extends State<VentasScreen> {
                                 DataColumn(label: Text('Descripción')),
                                 DataColumn(label: Text('Total')),
                                 DataColumn(label: Text('Descuento')),
+                                DataColumn(label: Text('Sucursal')),
                                 DataColumn(label: Text('Acciones')),
                               ],
                         rows: filteredVentas.map((venta) {
@@ -229,6 +252,37 @@ class _VentasScreenState extends State<VentasScreen> {
                                         Text('\$${total.toStringAsFixed(2)}')),
                                     DataCell(Text(
                                         '${descuento.toStringAsFixed(2)}%')),
+                                    DataCell(Text(
+                                        venta['sucursal_nombre'] ?? 'N/A')),
+                                    DataCell(Text(
+                                        venta['factura'] ?? 'N/A')), // Nuevo
+                                    DataCell(Text(
+                                        venta['comprobante_credito_fiscal'] ??
+                                            'N/A')), // Nuevo
+                                    DataCell(Text(
+                                        venta['factura_exportacion'] ??
+                                            'N/A')), // Nuevo
+                                    DataCell(Text(venta['nota_credito'] ??
+                                        'N/A')), // Nuevo
+                                    DataCell(Text(venta['nota_debito'] ??
+                                        'N/A')), // Nuevo
+                                    DataCell(Text(venta['nota_remision'] ??
+                                        'N/A')), // Nuevo
+                                    DataCell(Text(
+                                        venta['comprobante_liquidacion'] ??
+                                            'N/A')), // Nuevo
+                                    DataCell(Text(
+                                        venta['comprobante_retencion'] ??
+                                            'N/A')), // Nuevo
+                                    DataCell(Text(venta[
+                                            'documento_contable_liquidacion'] ??
+                                        'N/A')), // Nuevo
+                                    DataCell(Text(
+                                        venta['comprobante_donacion'] ??
+                                            'N/A')), // Nuevo
+                                    DataCell(Text(
+                                        venta['factura_sujeto_excluido'] ??
+                                            'N/A')), // Nuevo
                                     DataCell(
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -289,6 +343,8 @@ class _VentasScreenState extends State<VentasScreen> {
                                         Text('\$${total.toStringAsFixed(2)}')),
                                     DataCell(Text(
                                         '${descuento.toStringAsFixed(2)}%')),
+                                    DataCell(Text(venta['sucursal_nombre'] ??
+                                        'N/A')), //columna agregada para mostrar la venta a sucursal por defecto
                                     DataCell(
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -370,6 +426,6 @@ class _VentasScreenState extends State<VentasScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

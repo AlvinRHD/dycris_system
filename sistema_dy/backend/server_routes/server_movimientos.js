@@ -123,7 +123,8 @@ router.post("/ventas", async (req, res) => {
         descripcion_compra, fecha_venta || new Date(), factura || null, comprobante_credito_fiscal || null,
         factura_exportacion || null, nota_credito || null, nota_debito || null, nota_remision || null,
         comprobante_liquidacion || null, comprobante_retencion || null, documento_contable_liquidacion || null,
-        comprobante_donacion || null, factura_sujeto_excluido || null, descuentoValue
+        comprobante_donacion || null, factura_sujeto_excluido || null, descuentoValue,
+        4//sucursal matriz por defecto
       ]
     );
 
@@ -164,6 +165,7 @@ router.get("/ventas", async (req, res) => {
         v.factura, v.comprobante_credito_fiscal, v.factura_exportacion, v.nota_credito, v.nota_debito,
         v.nota_remision, v.comprobante_liquidacion, v.comprobante_retencion, v.documento_contable_liquidacion,
         v.comprobante_donacion, v.factura_sujeto_excluido, v.descuento,
+        v.sucursal_id, s.nombre AS sucursal_nombre,
         JSON_ARRAYAGG(
           JSON_OBJECT(
             'codigo', dv.codigo_producto, 
@@ -182,12 +184,22 @@ router.get("/ventas", async (req, res) => {
       FROM ventas v
       LEFT JOIN clientes c ON v.cliente_id = c.idCliente
       LEFT JOIN empleados e ON v.empleado_id = e.id
+      LEFT JOIN sucursal s ON v.sucursal_id = s.id  -- Corregido: JOIN con v.sucursal_id
       LEFT JOIN detalle_ventas dv ON v.idVentas = dv.idVentas
       LEFT JOIN inventario i ON dv.codigo_producto = i.codigo
       LEFT JOIN categoria cat ON i.categoria_id = cat.id
       LEFT JOIN sucursal suc ON i.sucursal_id = suc.id
       LEFT JOIN proveedores prov ON i.proveedor_id = prov.id
-      GROUP BY v.idVentas
+      GROUP BY 
+        v.idVentas, v.codigo_venta, v.fecha_venta, v.tipo_factura, v.metodo_pago, v.total,
+        v.descripcion_compra, v.empleado_id, e.nombres, e.apellidos,
+        c.nombre, c.direccion, c.dui, c.nit, c.tipo_cliente,
+        c.registro_contribuyente, c.representante_legal, c.direccion_representante, c.razon_social,
+        c.email, c.telefono, c.fecha_inicio, c.fecha_fin, c.porcentaje_retencion,
+        v.factura, v.comprobante_credito_fiscal, v.factura_exportacion, v.nota_credito, v.nota_debito,
+        v.nota_remision, v.comprobante_liquidacion, v.comprobante_retencion, v.documento_contable_liquidacion,
+        v.comprobante_donacion, v.factura_sujeto_excluido, v.descuento,
+        v.sucursal_id, s.nombre
       ORDER BY v.fecha_venta DESC
       LIMIT ? OFFSET ?
     `;

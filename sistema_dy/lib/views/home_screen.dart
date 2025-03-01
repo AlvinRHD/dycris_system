@@ -4,8 +4,7 @@ import 'modulo_usuarios/login_screen.dart';
 import 'modulo_usuarios/user_screen.dart';
 import 'modulo_empleados/empleados_screen.dart';
 import 'categoria/lista_categoria.dart';
-import 'movimientos/ventas/clientes/clientes_screen.dart';
-import 'movimientos/ventas/clientes/clientes_api.dart'; // Nueva importación
+
 import 'proveedores/proveedores_screen.dart';
 import 'sucursal/mostrar_sucursales.dart';
 import 'movimientos/movimientos_screen.dart';
@@ -63,29 +62,12 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int _totalClientes = 0;
-
   @override
   void initState() {
     super.initState();
-    _cargarTotalClientes();
+
     if (kDebugMode) {
       print("Datos del usuario recibido: ${widget.userData}");
-    }
-  }
-
-  // Función para obtener el total de clientes usando ClientesApi
-  Future<void> _cargarTotalClientes() async {
-    try {
-      final response = await ClientesApi().getClientes(
-          page: 1, limit: 10); // Solo necesitamos el total, no todos los datos
-      setState(() {
-        _totalClientes = response['total'];
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print("Error cargando total de clientes: $e");
-      }
     }
   }
 
@@ -384,17 +366,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 MaterialPageRoute(
                                     builder: (context) =>
                                         const MovimientosScreen()));
-                          },
-                        ),
-                        DashboardCard(
-                          title: '$_totalClientes\nClientes',
-                          icon: Icons.people_outline,
-                          color: Colors.purple,
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => ClientesScreen()));
                           },
                         ),
                       ],
