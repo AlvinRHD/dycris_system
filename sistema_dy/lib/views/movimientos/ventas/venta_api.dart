@@ -110,4 +110,20 @@ class VentaApi {
     }
     throw Exception('Error al cargar empleados');
   }
+
+  // Nueva función para calcular total de ventas por apertura
+  Future<double> getTotalVentasPorApertura(int aperturaId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/ventas?apertura_id=$aperturaId'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final ventas = data['ventas'] as List;
+      return ventas.fold<double>(
+        0.0,
+        (double sum, dynamic venta) =>
+            sum + (double.tryParse(venta['total'].toString()) ?? 0.0),
+      );
+    }
+    throw Exception('Error al calcular total de ventas');
+  }
 }

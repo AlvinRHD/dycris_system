@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import '../movimientos/ventas/auth_helper.dart';
 import 'agregar_usuario_modal.dart';
+// Asegúrate de tener este helper para obtener el usuario logueado
 
 class UsuariosScreen extends StatefulWidget {
   const UsuariosScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _UsuariosScreenState createState() => _UsuariosScreenState();
 }
 
@@ -16,6 +18,22 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
   List<Map<String, dynamic>> usuarios = [];
   List<Map<String, dynamic>> usuariosFiltrados = [];
   final TextEditingController _searchController = TextEditingController();
+  String? currentUsername; // Guarda el usuario logueado
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsuarios();
+    _loadLoggedInUser(); // Carga el usuario actualmente autenticado
+    _searchController.addListener(_filterUsuarios);
+  }
+
+  Future<void> _loadLoggedInUser() async {
+    final user = await AuthHelper.getLoggedInUser();
+    setState(() {
+      currentUsername = user?['usuario'];
+    });
+  }
 
   InputDecoration _inputDecoration(String labelText, IconData icon) {
     return InputDecoration(
@@ -40,13 +58,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchUsuarios();
-    _searchController.addListener(_filterUsuarios);
-  }
-
   Future<void> _fetchUsuarios() async {
     final url = Uri.parse('http://localhost:3000/api/usuarios');
     try {
@@ -64,7 +75,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
         throw Exception('Error al cargar los usuarios');
       }
     } catch (error) {
-      // ignore: avoid_print
       print('Error al obtener los usuarios: $error');
     }
   }
@@ -172,6 +182,17 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
   }
 
   Future<void> _confirmDelete(String usuario) async {
+    // Si el usuario a eliminar es el mismo que el logueado, no se permite eliminar.
+    if (currentUsername != null && currentUsername == usuario) {
+      await _showAlertDialog(
+        'Error',
+        'No se puede eliminar el usuario logueado',
+        Icons.error,
+        Colors.red,
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -202,8 +223,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     }
   }
 
-  /// Se elimina el parámetro 'cargo' para actualizar el usuario, ya que éste dato
-  /// se debe mantener sincronizado desde la tabla de empleados.
   Future<void> _updateUser(
       String usuario, String tipoCuenta, String password) async {
     final url = Uri.parse('http://localhost:3000/api/usuarios/$usuario');
@@ -247,7 +266,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
 
   Future<void> _showEditUserDialog(Map<String, dynamic> usuarioData) async {
     String tipoCuentaValue = usuarioData['tipo_cuenta']?.toString() ?? 'Admin';
-    // Se muestra el cargo obtenido (de la unión con empleados en la API)
     String cargoValue = usuarioData['cargo']?.toString() ?? 'No definido';
 
     if (!['Admin', 'Normal'].contains(tipoCuentaValue)) {
@@ -310,11 +328,9 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                           setStateModal(() => tipoCuentaValue = value!),
                     ),
                     const SizedBox(height: 16),
-                    // Campo para mostrar el cargo en modo lectura, ya que proviene de empleados
                     TextFormField(
                       initialValue: cargoValue,
-                      decoration:
-                          _inputDecoration('Cargo', Icons.work_outline),
+                      decoration: _inputDecoration('Cargo', Icons.work_outline),
                       readOnly: true,
                     ),
                     const SizedBox(height: 16),
@@ -331,8 +347,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                                 : Icons.visibility,
                             color: const Color(0xFF3C3C3C),
                           ),
-                          onPressed: () => setStateModal(
-                              () => obscureText = !obscureText),
+                          onPressed: () =>
+                              setStateModal(() => obscureText = !obscureText),
                         ),
                       ),
                     ),
@@ -379,7 +395,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                       tipoCuentaValue,
                       passwordController.text.trim(),
                     );
-                    // ignore: use_build_context_synchronously
                     Navigator.of(context).pop();
                   },
                   style: _alertButtonStyle().copyWith(
@@ -539,9 +554,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                         horizontalMargin: 24,
                         headingRowHeight: 56,
                         dataRowHeight: 56,
-                        headingRowColor:
-                            MaterialStateProperty.resolveWith<Color>(
-                          (Set<MaterialState> states) => Colors.grey[50]!,
+                        headingRowColor: WidgetStateProperty.resolveWith<Color>(
+                          (Set<WidgetState> states) => Colors.grey[50]!,
                         ),
                         decoration: BoxDecoration(
                           border: Border.all(color: Colors.black12),
@@ -608,8 +622,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                                         IconButton(
                                           icon: const Icon(Icons.delete,
                                               color: Colors.red),
-                                          onPressed: () =>
-                                              _confirmDelete(usuario['usuario']),
+                                          onPressed: () => _confirmDelete(
+                                              usuario['usuario']),
                                         ),
                                       ],
                                     ),

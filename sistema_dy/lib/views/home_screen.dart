@@ -5,9 +5,10 @@ import 'modulo_usuarios/user_screen.dart';
 import 'modulo_empleados/empleados_screen.dart';
 import 'categoria/lista_categoria.dart';
 
+import 'movimientos/movimientos_screen.dart';
 import 'proveedores/proveedores_screen.dart';
 import 'sucursal/mostrar_sucursales.dart';
-import 'movimientos/movimientos_screen.dart';
+
 import 'inventario/inventario_screen.dart';
 import 'package:flutter/foundation.dart';
 
@@ -357,7 +358,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           },
                         ),
                         DashboardCard(
-                          title: 'Movimientos',
+                          title: 'Facturación',
                           icon: Icons.swap_horiz,
                           color: Colors.orange,
                           onTap: () {

@@ -210,3 +210,44 @@ class DetalleVentaDialog extends StatelessWidget {
     );
   }
 }
+
+class AutorizacionDescuentoModal extends StatelessWidget {
+  final Function(Map<String, dynamic>) onAutorizado;
+
+  const AutorizacionDescuentoModal({required this.onAutorizado});
+
+  @override
+  Widget build(BuildContext context) {
+    final TextEditingController _codigoController = TextEditingController();
+
+    return AlertDialog(
+      title: const Text('Autorización de Descuento'),
+      content: TextField(
+        controller: _codigoController,
+        decoration: const InputDecoration(labelText: 'Código del jefe'),
+        obscureText: true,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            try {
+              final autorizado =
+                  await VentaApi().autorizarDescuento(_codigoController.text);
+              Navigator.pop(context,
+                  {'autorizado': autorizado, 'codigo': _codigoController.text});
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error: $e')),
+              );
+            }
+          },
+          child: const Text('Autorizar'),
+        ),
+      ],
+    );
+  }
+}

@@ -3,13 +3,14 @@ import 'categoria/lista_categoria.dart';
 import 'inventario/inventario_screen.dart';
 import 'modulo_empleados/empleados_screen.dart';
 import 'modulo_usuarios/user_screen.dart';
+
+import 'movimientos/compras_screen.dart';
 import 'movimientos/movimientos_screen.dart';
+import 'movimientos/ofertas/ofertas_screen.dart';
+import 'movimientos/salidas_screen.dart';
+import 'movimientos/traslados/traslados_screen.dart';
 import 'movimientos/ventas/clientes/clientes_screen.dart';
 import 'movimientos/ventas/ventas_screen.dart';
-import 'movimientos/traslados/traslados_screen.dart';
-import 'movimientos/ofertas/ofertas_screen.dart';
-import 'movimientos/compras_screen.dart';
-import 'movimientos/salidas_screen.dart';
 import 'proveedores/proveedores_screen.dart';
 import 'sucursal/mostrar_sucursales.dart';
 
@@ -76,12 +77,12 @@ class _CustomNavigationBarState extends State<CustomNavigationBar> {
     },
     {'title': 'Sucursales', 'icon': Icons.store, 'screen': MostrarSucursales()},
     {
-      'title': 'Desplegar Movimientos',
+      'title': 'Desplegar Facturación',
       'icon': Icons.swap_horiz,
       'screen': const MovimientosScreen(),
       'subItems': [
         {
-          'title': 'Movimientos',
+          'title': 'Facturación',
           'icon': Icons.shopping_cart,
           'screen': MovimientosScreen()
         },

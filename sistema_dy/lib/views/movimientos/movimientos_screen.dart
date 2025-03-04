@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'traslados/traslados_screen.dart';
-import 'compras_screen.dart';
 import 'salidas_screen.dart';
 import 'ofertas/ofertas_screen.dart';
+import 'ventas/agregar_venta_screen.dart';
+import 'ventas/cajas/agregar_caja_screen.dart';
+import 'ventas/cajas/aperturas_cierres_screen.dart';
 import 'ventas/ventas_screen.dart';
 
 import 'ventas/clientes/clientes_screen.dart'; // Para navegar a ClientesScreen
@@ -45,14 +47,14 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     return CustomNavigationBar(
         child: Scaffold(
       appBar: AppBar(
-        title: const Text('Movimientos'),
+        title: const Text('Facturación'),
         elevation: 2,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            int crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
+            int crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
 
             return GridView.count(
               crossAxisCount: crossAxisCount,
@@ -62,11 +64,20 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
               children: [
                 _buildMovimientoCard(
                   context: context,
-                  title: 'Ventas',
+                  title: 'Caja', // Nueva card para "Caja"
+                  icon: Icons.point_of_sale,
+                  color: Colors.green,
+                  screen: AgregarVentaScreen(),
+                ),
+
+                _buildMovimientoCard(
+                  context: context,
+                  title: 'Ventas Historial',
                   icon: Icons.shopping_cart,
                   color: colorScheme.primary,
                   screen: VentasScreen(),
                 ),
+
                 _buildMovimientoCard(
                   context: context,
                   title: 'Traslados',
@@ -74,13 +85,7 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                   color: colorScheme.secondary,
                   screen: TrasladosScreen(),
                 ),
-                _buildMovimientoCard(
-                  context: context,
-                  title: 'Compras',
-                  icon: Icons.shopping_bag,
-                  color: colorScheme.tertiary,
-                  screen: const ComprasScreen(),
-                ),
+
                 _buildMovimientoCard(
                   context: context,
                   title: 'Salidas',
@@ -101,6 +106,22 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                   icon: Icons.people_outline,
                   color: Colors.purple,
                   screen: ClientesScreen(),
+                ),
+                // Añadir en la lista de GridView.count dentro de MovimientosScreen
+                _buildMovimientoCard(
+                  context: context,
+                  title: 'Aperturas y Cierres',
+                  icon: Icons.account_balance,
+                  color: Colors.teal,
+                  screen: AperturasCierresScreen(),
+                ),
+                // Dentro de GridView.count en MovimientosScreen
+                _buildMovimientoCard(
+                  context: context,
+                  title: 'Agregar Caja',
+                  icon: Icons.add_box,
+                  color: Colors.blue,
+                  screen: const AgregarCajaScreen(),
                 ),
               ],
             );

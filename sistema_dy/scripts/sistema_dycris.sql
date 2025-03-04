@@ -18,6 +18,68 @@ USE `sistema_dycris`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `aperturas_caja`
+--
+
+DROP TABLE IF EXISTS `aperturas_caja`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `aperturas_caja` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `caja_id` int NOT NULL,
+  `usuario_id` int NOT NULL,
+  `fecha_apertura` datetime DEFAULT CURRENT_TIMESTAMP,
+  `saldo_acumulado` decimal(10,2) DEFAULT '0.00',
+  `monto_apertura` decimal(10,2) NOT NULL,
+  `total_apertura` decimal(10,2) GENERATED ALWAYS AS ((`saldo_acumulado` + `monto_apertura`)) STORED,
+  PRIMARY KEY (`id`),
+  KEY `caja_id` (`caja_id`),
+  KEY `usuario_id` (`usuario_id`),
+  CONSTRAINT `aperturas_caja_ibfk_1` FOREIGN KEY (`caja_id`) REFERENCES `cajas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `aperturas_caja_ibfk_2` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE RESTRICT
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `aperturas_caja`
+--
+
+LOCK TABLES `aperturas_caja` WRITE;
+/*!40000 ALTER TABLE `aperturas_caja` DISABLE KEYS */;
+INSERT INTO `aperturas_caja` (`id`, `caja_id`, `usuario_id`, `fecha_apertura`, `saldo_acumulado`, `monto_apertura`) VALUES (10,6,9,'2025-03-03 17:51:28',0.00,130.00),(11,3,9,'2025-03-03 17:52:52',0.00,100.00),(12,2,9,'2025-03-03 17:54:27',0.00,100.00),(13,2,9,'2025-03-03 18:00:00',0.00,1500.00),(14,3,9,'2025-03-04 11:03:03',0.00,1000.00),(15,6,9,'2025-03-04 12:45:30',0.00,290.00);
+/*!40000 ALTER TABLE `aperturas_caja` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `cajas`
+--
+
+DROP TABLE IF EXISTS `cajas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cajas` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `numero_caja` varchar(50) NOT NULL,
+  `sucursal_id` int NOT NULL,
+  `estado` enum('Abierta','Cerrada') DEFAULT 'Cerrada',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `numero_caja` (`numero_caja`,`sucursal_id`),
+  KEY `sucursal_id` (`sucursal_id`),
+  CONSTRAINT `cajas_ibfk_1` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursal` (`id`) ON DELETE CASCADE
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `cajas`
+--
+
+LOCK TABLES `cajas` WRITE;
+/*!40000 ALTER TABLE `cajas` DISABLE KEYS */;
+INSERT INTO `cajas` VALUES (2,'1',4,'Cerrada'),(3,'1',5,'Cerrada'),(6,'2',4,'Cerrada');
+/*!40000 ALTER TABLE `cajas` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `categoria`
 --
 
@@ -32,7 +94,7 @@ CREATE TABLE `categoria` (
   `estado` enum('Activo','Inactivo') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Activo',
   PRIMARY KEY (`id`),
   UNIQUE KEY `nombre` (`nombre`)
-);
+) ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -43,6 +105,36 @@ LOCK TABLES `categoria` WRITE;
 /*!40000 ALTER TABLE `categoria` DISABLE KEYS */;
 INSERT INTO `categoria` VALUES (1,'Tecnología','Productos electrónicos, computadores, etc.','2025-02-18 16:36:20','Activo'),(2,'Motores','ninguna por el momento','2025-02-18 18:46:16','Activo');
 /*!40000 ALTER TABLE `categoria` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `cierres_caja`
+--
+
+DROP TABLE IF EXISTS `cierres_caja`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cierres_caja` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `apertura_id` int NOT NULL,
+  `fecha_cierre` datetime DEFAULT CURRENT_TIMESTAMP,
+  `total_ventas` decimal(10,2) NOT NULL,
+  `efectivo_en_caja` decimal(10,2) NOT NULL,
+  `observaciones` text,
+  PRIMARY KEY (`id`),
+  KEY `apertura_id` (`apertura_id`),
+  CONSTRAINT `cierres_caja_ibfk_1` FOREIGN KEY (`apertura_id`) REFERENCES `aperturas_caja` (`id`) ON DELETE CASCADE
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `cierres_caja`
+--
+
+LOCK TABLES `cierres_caja` WRITE;
+/*!40000 ALTER TABLE `cierres_caja` DISABLE KEYS */;
+INSERT INTO `cierres_caja` VALUES (4,10,'2025-03-03 17:52:23',0.00,0.00,'ninguna'),(5,11,'2025-03-03 17:53:26',0.00,0.00,NULL),(6,12,'2025-03-03 17:56:05',0.00,3322.20,'NINGUNA'),(7,13,'2025-03-03 18:00:48',0.00,1500.00,'ninguna'),(8,14,'2025-03-04 12:29:01',31142.80,30000.00,'Se sacaron 1142.80 para pago de tecnicos\n'),(9,15,'2025-03-04 12:48:03',41211.10,40000.00,'SE SACARON 1211.10 PARA MERITOS DE TECNICOS');
+/*!40000 ALTER TABLE `cierres_caja` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -70,7 +162,7 @@ CREATE TABLE `clientes` (
   `porcentaje_retencion` decimal(5,2) DEFAULT NULL,
   `codigo_cliente` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`idCliente`)
-) ;
+);
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -79,7 +171,7 @@ CREATE TABLE `clientes` (
 
 LOCK TABLES `clientes` WRITE;
 /*!40000 ALTER TABLE `clientes` DISABLE KEYS */;
-INSERT INTO `clientes` VALUES (17,'Alfonso','Col. fatima',NULL,'1212-121212-121-2','Contribuyente Jurídico','12121212121212','no tiene','no tiene',NULL,'notiene@gmail.com','1212-1212','2025-02-27',NULL,NULL,'CGR-00001'),(18,'Melvado Alfarran','col.fatima',NULL,'1212-121212-121-2','ONG','121212121212',NULL,NULL,'melvadas','melvadas@gmail.com','1212-1212','2025-02-27',NULL,NULL,'CGR-00002'),(19,'Dantrio','col. fatima','06626539-1','1212-121212-121-2','Natural','1212121212',NULL,NULL,NULL,'dantrio@gmail.com','1212-1212','2025-02-27',NULL,NULL,'CGR-00003');
+INSERT INTO `clientes` VALUES (20,'Roberto','Col. Fatima','06626539-1','1121-010101-010-1','Natural','362215-1',NULL,NULL,NULL,'robert@gmail.com','1212-1212','2025-03-01',NULL,NULL,'CGR-00001'),(21,'Palo Alto SA CV','Lourdes Colon',NULL,'1121-010101-010-1','Contribuyente Jurídico','2-1','Luis Perez','Calle Principal #3 barrio el centro, lourdes colón, libertad norte',NULL,'infoInfo@gmail.com','1212-1212','2025-03-01',NULL,NULL,'CGR-00002'),(22,'Crist','Col. Santiago',NULL,'0121-010101-010-1','Sujeto Excluido','0-1',NULL,NULL,NULL,'crist@gmail.com','1212-1212','2025-03-01','2025-03-02',10.00,'CGR-00003');
 /*!40000 ALTER TABLE `clientes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -134,7 +226,7 @@ CREATE TABLE `detalle_traslados` (
 
 LOCK TABLES `detalle_traslados` WRITE;
 /*!40000 ALTER TABLE `detalle_traslados` DISABLE KEYS */;
-INSERT INTO `detalle_traslados` VALUES (1,17,'2323',5);
+INSERT INTO `detalle_traslados` VALUES (2,18,'INV-0001',2),(3,19,'INV-0002',1);
 /*!40000 ALTER TABLE `detalle_traslados` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -158,7 +250,7 @@ CREATE TABLE `detalle_ventas` (
   KEY `codigo_producto` (`codigo_producto`),
   CONSTRAINT `detalle_ventas_ibfk_1` FOREIGN KEY (`idVentas`) REFERENCES `ventas` (`idVentas`),
   CONSTRAINT `detalle_ventas_ibfk_2` FOREIGN KEY (`codigo_producto`) REFERENCES `inventario` (`codigo`)
-) ;
+);
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -167,7 +259,7 @@ CREATE TABLE `detalle_ventas` (
 
 LOCK TABLES `detalle_ventas` WRITE;
 /*!40000 ALTER TABLE `detalle_ventas` DISABLE KEYS */;
-INSERT INTO `detalle_ventas` VALUES (1,14,'2323','cocacola',1,300.00,300.00),(2,15,'2323','cocacola',3,300.00,900.00);
+INSERT INTO `detalle_ventas` VALUES (10,23,'INV-0001','Motor 1',3,1000.00,3000.00),(11,24,'INV-0001','Motor 1',3,1000.00,3000.00),(12,24,'INV-0003','Motocicleta',2,1500.00,3000.00),(13,24,'INV-0002','MOTOCICLETA',2,3000.00,6000.00),(14,25,'INV-0001','Motor 1',1,1000.00,1000.00),(15,25,'INV-0002','MOTOCICLETA',4,3000.00,12000.00),(16,26,'INV-0001','Motor 1',3,1000.00,3000.00),(17,26,'INV-0002','MOTOCICLETA',2,3000.00,6000.00);
 /*!40000 ALTER TABLE `detalle_ventas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -267,6 +359,7 @@ CREATE TABLE `historial_cambios_clientes` (
 
 LOCK TABLES `historial_cambios_clientes` WRITE;
 /*!40000 ALTER TABLE `historial_cambios_clientes` DISABLE KEYS */;
+INSERT INTO `historial_cambios_clientes` VALUES (8,21,'2025-03-01 10:28:40','{\"dui\": null, \"nit\": \"1121-010101-010-1\", \"email\": \"info@gmail.com\", \"nombre\": \"Palo Alto SA CV\", \"telefono\": \"1212-1212\", \"direccion\": \"Lourdes Colon\", \"fecha_fin\": null, \"idCliente\": 21, \"fecha_inicio\": \"2025-03-01T06:00:00.000Z\", \"razon_social\": null, \"tipo_cliente\": \"Contribuyente Jurídico\", \"codigo_cliente\": \"CGR-00002\", \"representante_legal\": \"Luis Perez\", \"porcentaje_retencion\": null, \"registro_contribuyente\": \"2-1\", \"direccion_representante\": \"Calle Principal #3 barrio el centro, lourdes colón, libertad norte\"}','{\"email\": \"infoInfo@gmail.com\", \"telefono\": \"1212-1212\", \"direccion\": \"Lourdes Colon\"}');
 /*!40000 ALTER TABLE `historial_cambios_clientes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -296,7 +389,6 @@ CREATE TABLE `historial_cambios_ofertas` (
 
 LOCK TABLES `historial_cambios_ofertas` WRITE;
 /*!40000 ALTER TABLE `historial_cambios_ofertas` DISABLE KEYS */;
-INSERT INTO `historial_cambios_ofertas` VALUES (1,2,'OGR-00002','{\"id\": 2, \"estado\": \"Activa\", \"descuento\": \"1.00\", \"fecha_fin\": \"2025-02-28T01:47:00.000Z\", \"fecha_inicio\": \"2025-02-28T01:47:00.000Z\", \"codigo_oferta\": \"OGR-00002\", \"inventario_id\": 1}','{\"descuento\": 1, \"fecha_fin\": \"2025-02-28 02:47:00\", \"fecha_inicio\": \"2025-02-28 01:47:00\", \"inventario_id\": 1}','2025-02-27 19:47:27'),(2,2,'OGR-00002','{\"id\": 2, \"estado\": \"Activa\", \"descuento\": \"1.00\", \"fecha_fin\": \"2025-02-28T08:47:00.000Z\", \"fecha_inicio\": \"2025-02-28T07:47:00.000Z\", \"codigo_oferta\": \"OGR-00002\", \"inventario_id\": 1}','{\"descuento\": 2, \"fecha_fin\": \"2025-02-28 08:47:00\", \"fecha_inicio\": \"2025-02-28 07:47:00\", \"inventario_id\": 1}','2025-02-27 19:47:39');
 /*!40000 ALTER TABLE `historial_cambios_ofertas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -326,7 +418,7 @@ CREATE TABLE `historial_cambios_traslados` (
 
 LOCK TABLES `historial_cambios_traslados` WRITE;
 /*!40000 ALTER TABLE `historial_cambios_traslados` DISABLE KEYS */;
-INSERT INTO `historial_cambios_traslados` VALUES (1,17,'TGR-00001','{\"estado\": \"Pendiente\", \"productos\": [{\"cantidad\": 2, \"codigo_inventario\": \"2323\"}]}','{\"productos\": [{\"cantidadAntes\": 2, \"cantidadDespues\": 5, \"codigo_inventario\": \"2323\"}]}','2025-02-27 14:17:14');
+INSERT INTO `historial_cambios_traslados` VALUES (2,18,'TGR-00001','{\"estado\": \"Pendiente\", \"productos\": [{\"cantidad\": 2, \"codigo_inventario\": \"INV-0001\"}]}','{\"estado\": \"Completado\"}','2025-03-01 11:35:45');
 /*!40000 ALTER TABLE `historial_cambios_traslados` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -403,7 +495,7 @@ CREATE TABLE `inventario` (
 
 LOCK TABLES `inventario` WRITE;
 /*!40000 ALTER TABLE `inventario` DISABLE KEYS */;
-INSERT INTO `inventario` VALUES (1,'2323','/uploads/1740687336551.png','cocacola','es bebida','12121212','121212',1,3,290.00,121.00,300.00,8,5,'2025-02-27','2025-02-27','1','2',2);
+INSERT INTO `inventario` VALUES (2,'INV-0001','/uploads/1740841782010.png','Motor 1','Es un motor de gama alta','121212','12122',2,4,500.00,500.00,1000.00,31,10,'2025-03-01','2025-03-01','12121212','12121212',2),(3,'INV-0002','/uploads/1740851098934.png','MOTOCICLETA','AMARILLO NEON','SD5RCML08SH609058','UXAA2007S609058',2,5,2000.00,2000.00,3000.00,92,10,'2025-02-27','2025-03-01','1212','1',2),(4,'INV-0003','/uploads/1740852024034.png','Motocicleta','Una moto, buena moto','000000003030','883833939',2,5,1250.00,1620.00,1500.00,48,10,'2025-03-01','2025-03-01','00044004','00040404',2);
 /*!40000 ALTER TABLE `inventario` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -435,7 +527,6 @@ CREATE TABLE `ofertas` (
 
 LOCK TABLES `ofertas` WRITE;
 /*!40000 ALTER TABLE `ofertas` DISABLE KEYS */;
-INSERT INTO `ofertas` VALUES (1,1,1.00,'2025-02-27 14:19:00','2025-02-27 14:19:00','Activa','OGR-00001'),(2,1,2.00,'2025-02-28 07:47:00','2025-02-28 08:47:00','Activa','OGR-00002');
 /*!40000 ALTER TABLE `ofertas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -553,7 +644,7 @@ CREATE TABLE `sucursal` (
 
 LOCK TABLES `sucursal` WRITE;
 /*!40000 ALTER TABLE `sucursal` DISABLE KEYS */;
-INSERT INTO `sucursal` VALUES (1,'S001','Sucursal Principal','Colombia','Bogotá','Bogotá','Activo'),(2,'3344','Sucursal poderosa','El Salvador','Ahuachapán','Apaneca','Inactivo'),(3,'500','santiago','El Salvador','Usulután','Santiago de María','Activo');
+INSERT INTO `sucursal` VALUES (4,'SGR-0001','CASA MATRIZ','El Salvador','Usulután','Usulután','Activo'),(5,'SGR-0002','SUCURSAL MAXIMOTO SAN SALVADOR','El Salvador','','San Salvador','Activo'),(6,'SGR-0003',' SUCURSAL MAXIMOTO SENSUNTEPEQUE','El Salvador','Cabañas','Sensuntepeque','Activo'),(7,'SGR-0004',' SUCURSAL MAXIMOTO SAN MIGUEL CENTRO','El Salvador','San Miguel','San Miguel','Activo'),(8,'SGR-0005',' SUCURSAL MAXIMOTO SANTA ANA','El Salvador','Santa Ana','Santa Ana','Activo');
 /*!40000 ALTER TABLE `sucursal` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -587,7 +678,7 @@ CREATE TABLE `traslados` (
 
 LOCK TABLES `traslados` WRITE;
 /*!40000 ALTER TABLE `traslados` DISABLE KEYS */;
-INSERT INTO `traslados` VALUES (17,'TGR-00001','S001','500','EMP-0003','2025-02-27 14:16:52','Pendiente');
+INSERT INTO `traslados` VALUES (18,'TGR-00001','SGR-0001','SGR-0002','EMP-0003','2025-03-01 11:32:54','Completado'),(19,'TGR-00002','SGR-0001','SGR-0002','EMP-0003','2025-03-01 12:02:11','Pendiente');
 /*!40000 ALTER TABLE `traslados` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -653,12 +744,18 @@ CREATE TABLE `ventas` (
   `comprobante_donacion` varchar(100) DEFAULT NULL,
   `factura_sujeto_excluido` varchar(100) DEFAULT NULL,
   `descuento` decimal(5,2) DEFAULT '0.00',
+  `sucursal_id` int NOT NULL DEFAULT '4',
+  `apertura_id` int NOT NULL,
   PRIMARY KEY (`idVentas`),
   UNIQUE KEY `codigo_venta` (`codigo_venta`),
   KEY `cliente_id` (`cliente_id`),
   KEY `empleado_id` (`empleado_id`),
+  KEY `sucursal_id` (`sucursal_id`),
+  KEY `fk_apertura` (`apertura_id`),
+  CONSTRAINT `fk_apertura` FOREIGN KEY (`apertura_id`) REFERENCES `aperturas_caja` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `ventas_ibfk_1` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`idCliente`) ON DELETE SET NULL,
-  CONSTRAINT `ventas_ibfk_2` FOREIGN KEY (`empleado_id`) REFERENCES `empleados` (`id`) ON DELETE RESTRICT
+  CONSTRAINT `ventas_ibfk_2` FOREIGN KEY (`empleado_id`) REFERENCES `empleados` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `ventas_ibfk_3` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursal` (`id`)
 );
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -668,8 +765,35 @@ CREATE TABLE `ventas` (
 
 LOCK TABLES `ventas` WRITE;
 /*!40000 ALTER TABLE `ventas` DISABLE KEYS */;
-INSERT INTO `ventas` VALUES (14,'VGR-00001','2025-02-27 00:00:00',18,11,'Consumidor Final','Efectivo',339.00,'ninguna',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0.00),(15,'VGR-00002','2025-02-27 00:00:00',18,11,'Consumidor Final','Tarjeta de Crédito',1006.83,'ninguna',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1.00);
+INSERT INTO `ventas` VALUES (23,'VGR-00001','2025-03-03 17:55:08',22,11,'Consumidor Final','Efectivo',3322.20,'ninguns',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,2.00,4,12),(24,'VGR-00002','2025-03-04 11:04:55',21,11,'Consumidor Final','Efectivo',13424.40,'ninguna nota','1','1','1','1','1','1','1','1','1','1','1',1.00,4,14),(25,'VGR-00003','2025-03-04 11:07:36',22,11,'Crédito Fiscal','Tarjeta de Crédito',14396.20,'NINGUNA NOTA','2','2','2','2','2','2','2','2','2','2','2',2.00,4,14),(26,'VGR-00004','2025-03-04 12:47:35',21,11,'Consumidor Final','Transferencia Bancaria',10068.30,'ninguna nota','5','5','5','5','5','5','5','5','5','5','5',1.00,4,15);
 /*!40000 ALTER TABLE `ventas` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ventas_sucursales_manual`
+--
+
+DROP TABLE IF EXISTS `ventas_sucursales_manual`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ventas_sucursales_manual` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `venta_id` int NOT NULL,
+  `sucursal_nombre` varchar(100) NOT NULL,
+  `fecha_asignacion` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `venta_id` (`venta_id`),
+  CONSTRAINT `ventas_sucursales_manual_ibfk_1` FOREIGN KEY (`venta_id`) REFERENCES `ventas` (`idVentas`) ON DELETE CASCADE
+);
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ventas_sucursales_manual`
+--
+
+LOCK TABLES `ventas_sucursales_manual` WRITE;
+/*!40000 ALTER TABLE `ventas_sucursales_manual` DISABLE KEYS */;
+/*!40000 ALTER TABLE `ventas_sucursales_manual` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -681,4 +805,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-02-27 20:25:53
+-- Dump completed on 2025-03-04 13:05:11

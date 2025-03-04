@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../navigation_bar.dart';
 import 'agregar_venta_screen.dart';
-import 'asignar_sucursal_manual_screen.dart';
+import 'ventasTemporal/asignar_sucursal_manual_screen.dart';
 import 'editar_venta_screen.dart';
 import 'venta_widgets.dart';
 import 'venta_api.dart';
@@ -125,22 +125,22 @@ class _VentasScreenState extends State<VentasScreen> {
         child: Scaffold(
       appBar: AppBar(
         title: Text('Ventas', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AgregarVentaScreen()),
-                );
-                if (result == true) _cargarVentas();
-              },
-              icon: Icon(Icons.add),
-              label: Text("Agregar Venta"),
-            ),
-          ),
-        ],
+        // actions: [
+        //   Padding(
+        //     padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        //     child: ElevatedButton.icon(
+        //       onPressed: () async {
+        //         final result = await Navigator.push(
+        //           context,
+        //           MaterialPageRoute(builder: (context) => AgregarVentaScreen()),
+        //         );
+        //         if (result == true) _cargarVentas();
+        //       },
+        //       icon: Icon(Icons.add),
+        //       label: Text("Agregar Venta"),
+        //     ),
+        //   ),
+        // ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

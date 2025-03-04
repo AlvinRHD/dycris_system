@@ -176,6 +176,8 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                           DataColumn(label: Text('Empleado')), // Nueva columna
                           DataColumn(label: Text('Fecha')),
                           DataColumn(label: Text('Estado')),
+                          // DataColumn(
+                          //     label: Text('Descripcion')), // Nueva columna
                           DataColumn(label: Text('Acciones')),
                         ],
                         rows: traslados.map((traslado) {

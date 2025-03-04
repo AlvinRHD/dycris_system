@@ -74,7 +74,7 @@ CREATE TABLE `proveedores` (
   `direccion` text NOT NULL,
   `telefono` varchar(20) NOT NULL
 );
-select * from proveedores;
+select * from inventario;
 use sistema_dycris;
 
 -- segunda tabla de proveedores
@@ -219,6 +219,71 @@ use  sistema_dycris;
 ALTER TABLE ventas
 ADD COLUMN sucursal_id INT NOT NULL DEFAULT 4,
 ADD FOREIGN KEY (sucursal_id) REFERENCES sucursal(id);
+
+
+-- Tabla `cajas` (ya propuesta, ajustada para múltiples por sucursal)
+CREATE TABLE `cajas` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `numero_caja` VARCHAR(50) NOT NULL, -- Ej: "Caja 1", "Caja 2"
+  `sucursal_id` INT NOT NULL,
+  `estado` ENUM('Abierta', 'Cerrada') DEFAULT 'Cerrada',
+  FOREIGN KEY (`sucursal_id`) REFERENCES `sucursal`(`id`) ON DELETE CASCADE,
+  UNIQUE (`numero_caja`, `sucursal_id`) -- Evita duplicados por sucursal
+);
+
+-- Tabla `aperturas_caja` (con histórico implícito al conservar registros)
+CREATE TABLE `aperturas_caja` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `caja_id` INT NOT NULL,
+  `usuario_id` INT NOT NULL,
+  `fecha_apertura` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `saldo_acumulado` DECIMAL(10,2) DEFAULT 0.00, -- Efectivo del último cierre
+  `monto_apertura` DECIMAL(10,2) NOT NULL, -- Monto ingresado por el cajero
+  `total_apertura` DECIMAL(10,2) GENERATED ALWAYS AS (`saldo_acumulado` + `monto_apertura`) STORED,
+  FOREIGN KEY (`caja_id`) REFERENCES `cajas`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`usuario_id`) REFERENCES `usuarios`(`id`) ON DELETE RESTRICT
+);
+
+-- Tabla `cierres_caja` (diseño básico, ajustable más adelante)
+CREATE TABLE `cierres_caja` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `apertura_id` INT NOT NULL,
+  `fecha_cierre` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `total_ventas` DECIMAL(10,2) NOT NULL, -- Suma de ventas del turno
+  `efectivo_en_caja` DECIMAL(10,2) NOT NULL, -- Efectivo físico contado
+  `observaciones` TEXT,
+  FOREIGN KEY (`apertura_id`) REFERENCES `aperturas_caja`(`id`) ON DELETE CASCADE
+);
+
+-- Ajuste en `ventas` para vincular con aperturas
+ALTER TABLE `ventas`
+ADD COLUMN `apertura_id` INT NOT NULL,
+ADD FOREIGN KEY (`apertura_id`) REFERENCES `aperturas_caja`(`id`) ON DELETE RESTRICT;
+
+
+ALTER TABLE `ventas`
+ADD COLUMN `apertura_id` INT NOT NULL;
+
+INSERT INTO cajas (numero_caja, sucursal_id, estado) 
+VALUES ('Caja 1', 4, 'Abierta');
+
+
+INSERT INTO aperturas_caja (caja_id, usuario_id, monto_apertura) 
+VALUES (1, 9, 100.00);
+
+
+ALTER TABLE `ventas`
+ADD CONSTRAINT `fk_apertura`
+FOREIGN KEY (`apertura_id`) REFERENCES `aperturas_caja`(`id`) ON DELETE RESTRICT;
+
+select * from cajas;
+
+SELECT * FROM empleados WHERE id = 11;
+SELECT * FROM usuarios WHERE empleado_id = 11;
+SELECT * FROM cajas WHERE id = 6;
+
+
+
 
 select * from historial_cambios_clientes;
 

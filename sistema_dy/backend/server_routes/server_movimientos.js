@@ -60,8 +60,18 @@ router.post("/ventas", async (req, res) => {
       comprobante_donacion,
       factura_sujeto_excluido,
       descuento,
-      codigo_autorizacion // Nuevo campo opcional para el código de autorización
+      codigo_autorizacion, // Nuevo campo opcional para el código de autorización
+      apertura_id // Nuevo campo requerido
     } = req.body;
+
+    // Validar que haya una apertura activa
+    const [apertura] = await req.db.query(
+      'SELECT id FROM aperturas_caja WHERE id = ? AND NOT EXISTS (SELECT 1 FROM cierres_caja WHERE apertura_id = ?)',
+      [apertura_id, apertura_id]
+    );
+    if (!apertura.length) {
+      return res.status(400).json({ message: 'No hay una apertura de caja activa para esta venta' });
+    }
 
     // Generar código automático si no se proporciona
     const finalCodigoVenta = codigo_venta || await generateCode(req.db, 'VGR', 'ventas', 'codigo_venta');
@@ -109,22 +119,22 @@ router.post("/ventas", async (req, res) => {
       }
     }
 
-    // Insertar venta
+    // Insertar venta con apertura_id
     const [ventaResult] = await req.db.query(
       `INSERT INTO ventas (
         codigo_venta, cliente_id, empleado_id, tipo_factura, metodo_pago, total, 
         descripcion_compra, fecha_venta, factura, comprobante_credito_fiscal, 
         factura_exportacion, nota_credito, nota_debito, nota_remision, 
         comprobante_liquidacion, comprobante_retencion, documento_contable_liquidacion, 
-        comprobante_donacion, factura_sujeto_excluido, descuento
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        comprobante_donacion, factura_sujeto_excluido, descuento, apertura_id, sucursal_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         finalCodigoVenta, cliente_id, empleado_id, tipo_factura, metodo_pago, total,
         descripcion_compra, fecha_venta || new Date(), factura || null, comprobante_credito_fiscal || null,
         factura_exportacion || null, nota_credito || null, nota_debito || null, nota_remision || null,
         comprobante_liquidacion || null, comprobante_retencion || null, documento_contable_liquidacion || null,
-        comprobante_donacion || null, factura_sujeto_excluido || null, descuentoValue,
-        4//sucursal matriz por defecto
+        comprobante_donacion || null, factura_sujeto_excluido || null, descuento || 0.0, 
+        apertura_id, 4 // Sucursal por defecto
       ]
     );
 
@@ -290,27 +300,22 @@ router.delete("/ventas/:id", async (req, res) => {
 router.get("/clientes", async (req, res) => {
   const { page = 1, limit = 10, q } = req.query;
   const offset = (page - 1) * limit;
-
   try {
-    let query = `
-      SELECT * FROM clientes
-      WHERE 1=1
-    `;
+    let query = "SELECT * FROM clientes WHERE 1=1";
     const params = [];
-
     if (q) {
-      query += " AND nombre LIKE ?";
-      params.push(`%${q}%`);
+      query += " AND (nombre LIKE ? OR nit LIKE ? OR dui LIKE ?)";
+      params.push(`%${q}%`, `%${q}%`, `%${q}%`); // Búsqueda más amplia
     }
-
     query += " ORDER BY idCliente DESC LIMIT ? OFFSET ?";
     params.push(parseInt(limit), parseInt(offset));
 
     const [rows] = await req.db.query(query, params);
-    const [totalResult] = await req.db.query("SELECT COUNT(*) AS total FROM clientes" + (q ? " WHERE nombre LIKE ?" : ""), q ? [`%${q}%`] : []);
-    const total = totalResult[0].total;
-
-    res.json({ clientes: rows, total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / limit) });
+    const [totalResult] = await req.db.query(
+      "SELECT COUNT(*) AS total FROM clientes" + (q ? " WHERE nombre LIKE ? OR nit LIKE ? OR dui LIKE ?" : ""),
+      q ? [`%${q}%`, `%${q}%`, `%${q}%`] : []
+    );
+    res.json({ clientes: rows, total: totalResult[0].total, page: parseInt(page), limit: parseInt(limit) });
   } catch (err) {
     console.error("Error al obtener clientes:", err);
     res.status(500).json({ message: "Error al obtener clientes", error: err.message });
@@ -505,6 +510,18 @@ router.get("/traslados", async (req, res) => {
   } catch (err) {
     console.error("Error al obtener los traslados:", err);
     res.status(500).json({ message: "Error al obtener los traslados", error: err.message });
+  }
+});
+
+router.get("/traslados/sucursales", async (req, res) => {
+  try {
+    const [rows] = await req.db.query(
+      "SELECT codigo, nombre FROM sucursal WHERE estado = 'Activo'"
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al obtener sucursales:", err);
+    res.status(500).json({ message: "Error al obtener sucursales", error: err.message });
   }
 });
 
@@ -792,6 +809,119 @@ router.delete("/ofertas/:id", async (req, res) => {
   }
 });
 
+
+
+// ------------------ CAJAS ------------------
+// Agregar endpoints para cajas y aperturas
+router.get('/cajas', async (req, res) => {
+  try {
+    const [rows] = await req.db.query(
+      'SELECT c.id, c.numero_caja, c.sucursal_id, s.nombre AS sucursal_nombre ' +
+      'FROM cajas c LEFT JOIN sucursal s ON c.sucursal_id = s.id WHERE c.estado = "Abierta"'
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al obtener cajas', error: err.message });
+  }
+});
+
+router.get('/cajas/todas', async (req, res) => {
+  try {
+    const [rows] = await req.db.query(
+      'SELECT c.id, c.numero_caja, c.sucursal_id, s.nombre AS sucursal_nombre, s.codigo AS sucursal_codigo, c.estado ' +
+      'FROM cajas c LEFT JOIN sucursal s ON c.sucursal_id = s.id ' +
+      'ORDER BY c.sucursal_id, c.numero_caja'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Error al obtener todas las cajas:', err);
+    res.status(500).json({ message: 'Error al obtener cajas', error: err.message });
+  }
+});
+
+router.post('/cajas', async (req, res) => {
+  const { numero_caja, sucursal_id, estado } = req.body;
+  try {
+    const [sucursal] = await req.db.query("SELECT id FROM sucursal WHERE codigo = ?", [sucursal_id]);
+    if (!sucursal.length) return res.status(404).json({ message: "Sucursal no encontrada" });
+    const [result] = await req.db.query(
+      'INSERT INTO cajas (numero_caja, sucursal_id, estado) VALUES (?, ?, ?)',
+      [numero_caja, sucursal[0].id, estado || 'Cerrada']
+    );
+    res.status(201).json({ id: result.insertId, message: 'Caja agregada' });
+  } catch (err) {
+    console.error('Error al agregar caja:', err);
+    res.status(500).json({ message: 'Error al agregar caja', error: err.message });
+  }
+});
+
+router.post('/aperturas_caja', async (req, res) => {
+  const { caja_id, usuario_id, monto_apertura } = req.body;
+  try {
+    const [usuario] = await req.db.query("SELECT id FROM usuarios WHERE id = ?", [usuario_id]);
+    if (!usuario.length) return res.status(400).json({ message: "Usuario no encontrado" });
+    const [caja] = await req.db.query("SELECT estado FROM cajas WHERE id = ?", [caja_id]);
+    if (!caja.length || caja[0].estado !== 'Cerrada') {
+      return res.status(400).json({ message: "Caja no disponible para apertura" });
+    }
+    const [result] = await req.db.query(
+      `INSERT INTO aperturas_caja (caja_id, usuario_id, monto_apertura) VALUES (?, ?, ?)`,
+      [caja_id, usuario_id, monto_apertura]
+    );
+    await req.db.query("UPDATE cajas SET estado = 'Abierta' WHERE id = ?", [caja_id]);
+    res.status(201).json({ id: result.insertId, message: 'Apertura registrada' });
+  } catch (err) {
+    console.error('Error al registrar apertura:', err);
+    res.status(500).json({ message: 'Error al registrar apertura', error: err.message });
+  }
+});
+
+// Agregar endpoint para cierres de caja
+router.post('/cierres_caja', async (req, res) => {
+  const { apertura_id, total_ventas, efectivo_en_caja, observaciones } = req.body;
+  try {
+    const [result] = await req.db.query(
+      `INSERT INTO cierres_caja (apertura_id, total_ventas, efectivo_en_caja, observaciones)
+       VALUES (?, ?, ?, ?)`,
+      [apertura_id, total_ventas, efectivo_en_caja, observaciones || null]
+    );
+    await req.db.query('UPDATE cajas SET estado = "Cerrada" WHERE id = (SELECT caja_id FROM aperturas_caja WHERE id = ?)', [apertura_id]);
+    res.status(201).json({ id: result.insertId, message: 'Cierre registrado' });
+  } catch (err) {
+    console.error('Error al registrar cierre:', err);
+    res.status(500).json({ message: 'Error al registrar cierre', error: err.message });
+  }
+});
+
+router.get('/aperturas_cierres', async (req, res) => {
+  const { apertura_id } = req.query;
+  try {
+    let query = `
+      SELECT 
+        a.id, a.caja_id, a.usuario_id, a.fecha_apertura, a.monto_apertura, a.total_apertura,
+        c.numero_caja, c.sucursal_id, s.nombre AS sucursal_nombre, c.estado,
+        cc.fecha_cierre, cc.total_ventas, cc.efectivo_en_caja, cc.observaciones
+      FROM aperturas_caja a
+      LEFT JOIN cajas c ON a.caja_id = c.id
+      LEFT JOIN sucursal s ON c.sucursal_id = s.id
+      LEFT JOIN cierres_caja cc ON a.id = cc.apertura_id
+    `;
+    const params = [];
+    if (apertura_id) {
+      query += ' WHERE a.id = ?';
+      params.push(apertura_id);
+    }
+    query += ' ORDER BY a.fecha_apertura DESC';
+    const [rows] = await req.db.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error al obtener aperturas y cierres:', err);
+    res.status(500).json({ message: 'Error al obtener aperturas y cierres', error: err.message });
+  }
+});
+
+
+
 // ------------------ OTROS ENDPOINTS ------------------
 
 router.get("/traslados/sucursales", async (req, res) => {
@@ -833,12 +963,17 @@ router.get("/buscar-inventario", async (req, res) => {
     }
 
     const [rows] = await req.db.query(query, params);
+    console.log("Productos devueltos:", rows); // Log para depurar
     res.status(200).json(rows);
   } catch (err) {
+    
     console.error("Error al buscar inventario:", err);
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
 
 module.exports = router;
 
