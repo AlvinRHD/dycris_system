@@ -1,7 +1,8 @@
 -- Crear la base de datos
 CREATE DATABASE IF NOT EXISTS `sistema_dycris`;
 USE `sistema_dycris`;
-
+DESCRIBE detalle_ventas;
+drop table inventario;
 -- Tabla Inventario
 CREATE TABLE inventario (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -28,6 +29,55 @@ CREATE TABLE inventario (
     FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE CASCADE
 );
 
+ALTER TABLE inventario 
+DROP FOREIGN KEY inventario_ibfk_1, 
+DROP FOREIGN KEY inventario_ibfk_2, 
+DROP FOREIGN KEY inventario_ibfk_3;
+
+ALTER TABLE inventario 
+DROP COLUMN imagen,
+DROP COLUMN categoria_id,
+DROP COLUMN sucursal_id,
+DROP COLUMN costo,
+DROP COLUMN credito,
+DROP COLUMN stock_minimo,
+DROP COLUMN fecha_ingreso,
+DROP COLUMN fecha_reingreso,
+DROP COLUMN numero_poliza,
+DROP COLUMN numero_lote,
+DROP COLUMN proveedor_id;
+
+ALTER TABLE inventario 
+ADD COLUMN sucursal VARCHAR(255) NOT NULL,
+ADD COLUMN categoria VARCHAR(255) NOT NULL,
+ADD COLUMN marca VARCHAR(255) NOT NULL,
+ADD COLUMN color VARCHAR(255) NOT NULL,
+ADD COLUMN poliza VARCHAR(255) NOT NULL;
+
+DESC inventario;
+
+
+CREATE TABLE `inventario` (
+  `id` int(11) NOT NULL,
+  `sucursal` varchar(255) NOT NULL,
+  `codigo` varchar(50) NOT NULL,
+  `nombre` varchar(100) NOT NULL,
+  `categoria` varchar(255) NOT NULL,
+  `marca` varchar(255) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `stock_existencia` int(11) NOT NULL,
+  `precio_venta` decimal(10,2) NOT NULL,
+  `numero_motor` varchar(50) DEFAULT NULL,
+  `numero_chasis` varchar(50) DEFAULT NULL,
+  `color` varchar(255) NOT NULL,
+  `poliza` varchar(255) NOT NULL
+);
+
+
+SHOW CREATE TABLE inventario;
+
+
+
 
 -- Tabla Sucursal
 CREATE TABLE sucursal (
@@ -41,6 +91,14 @@ CREATE TABLE sucursal (
 );
 select * from proveedores;
 SELECT codigo, nombre FROM sucursal WHERE estado = 'Activo';
+
+ALTER TABLE `sucursal` 
+ADD COLUMN `direccion` VARCHAR(20) NOT NULL AFTER `ciudad`,
+ADD COLUMN `telefono` varchar(255) NOT NULL AFTER `direccion`,
+ADD COLUMN  `gmail` varchar(255) NOT NULL AFTER `telefono`;
+
+
+
 
 
 -- Tabla Categoría
@@ -74,8 +132,20 @@ CREATE TABLE `proveedores` (
   `direccion` text NOT NULL,
   `telefono` varchar(20) NOT NULL
 );
-select * from inventario;
-use sistema_dycris;
+
+ALTER TABLE `proveedores`
+ADD COLUMN `giro` VARCHAR(255),
+ADD COLUMN `correspondencia` VARCHAR(255),
+ADD COLUMN `rubro` VARCHAR(255);
+
+
+ALTER TABLE `proveedores` 
+MODIFY COLUMN `tipo_proveedor` ENUM('Natural', 'Jurídico', 'Sujeto Excluido') NOT NULL;
+
+
+
+
+
 
 -- segunda tabla de proveedores
 CREATE TABLE `proveedores_juridicos` (
@@ -91,6 +161,17 @@ CREATE TABLE `proveedores_juridicos` (
   CONSTRAINT `proveedores_juridicos_ibfk_1` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`)
 );
 
+
+ALTER TABLE `proveedores_juridicos`
+ADD COLUMN `apellidos_representante` VARCHAR(20) NOT NULL AFTER `nombres_representante`;
+
+
+
+ALTER TABLE `proveedores_juridicos` ADD `nombres_representante` VARCHAR(20) NOT NULL AFTER `nrc`, ADD `apelldos_representante` VARCHAR(20) NOT NULL AFTER `nombres_representante`, ADD `direccion_representante` TEXT NOT NULL AFTER `apelldos_representante`, ADD `telefono_representante` VARCHAR(20) NOT NULL AFTER `direccion_representante`, ADD `dui_representante` VARCHAR(20) NOT NULL AFTER `telefono_representante`, ADD `nit_representante` VARCHAR(20) NOT NULL AFTER `dui_representante`, ADD `correo_representante` VARCHAR(20) NOT NULL AFTER `nit_representante`;
+
+
+SELECT * FROM proveedores_juridicos;
+
 -- tercera tabla para proveedores
 CREATE TABLE `proveedores_naturales` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -102,8 +183,17 @@ CREATE TABLE `proveedores_naturales` (
   CONSTRAINT `proveedores_naturales_ibfk_1` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`)
 );
 
+ALTER TABLE `proveedores_naturales` ADD `nrc` VARCHAR(20) NOT NULL AFTER `dui`;
 
-
+CREATE TABLE `proveedores_excluidos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `proveedor_id` int(11) NOT NULL,
+  `nombre_propietario` varchar(20) NOT NULL,
+  `dui` varchar(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `proveedor_id` (`proveedor_id`),
+  CONSTRAINT `proveedores_excluidos_ibfk_1` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`)
+);
 
 
 
@@ -151,6 +241,25 @@ ADD COLUMN `codigo_cliente` VARCHAR(50);
 
 
 select * from clientes;
+
+-- Modificar la tabla clientes para agregar el campo departamento y ajustar restricciones
+ALTER TABLE `clientes`
+  ADD COLUMN `departamento` VARCHAR(50) DEFAULT NULL AFTER `direccion`,
+  MODIFY COLUMN `registro_contribuyente` VARCHAR(20) DEFAULT NULL, -- Hacerlo opcional para Sujeto Excluido
+  MODIFY COLUMN `porcentaje_retencion` DECIMAL(5,2) DEFAULT NULL; -- Permitir cualquier valor, no fijo en 10%
+
+ALTER TABLE `clientes`
+  MODIFY COLUMN `tipo_cliente` enum('Consumidor Final','Contribuyente Jurídico','Natural','ONG','Cliente de Paso') NOT NULL DEFAULT 'Cliente de Paso',
+  DROP COLUMN `fecha_fin`,
+  DROP COLUMN `porcentaje_retencion`,
+  MODIFY COLUMN `email` varchar(100)   DEFAULT NULL,
+  MODIFY COLUMN `telefono` varchar(15)   DEFAULT NULL;
+
+-- Insertar un "Cliente de Paso" por defecto
+INSERT INTO `clientes` (`idCliente`, `nombre`, `tipo_cliente`, `codigo_cliente`) 
+VALUES (1, 'Cliente de Paso', 'Cliente de Paso', 'CGR-00001')
+ON DUPLICATE KEY UPDATE `nombre` = 'Cliente de Paso', `tipo_cliente` = 'Cliente de Paso';
+
 
 -- historial de cambios para la tabla de clientes
 CREATE TABLE `historial_cambios_clientes` (
@@ -220,6 +329,41 @@ ALTER TABLE ventas
 ADD COLUMN sucursal_id INT NOT NULL DEFAULT 4,
 ADD FOREIGN KEY (sucursal_id) REFERENCES sucursal(id);
 
+ALTER TABLE ventas
+  ADD COLUMN porcentaje_retencion DECIMAL(5,2) DEFAULT NULL AFTER descuento,
+  ADD COLUMN dte VARCHAR(50) DEFAULT NULL AFTER metodo_pago,
+  DROP COLUMN factura,
+  DROP COLUMN comprobante_credito_fiscal,
+  DROP COLUMN factura_exportacion,
+  DROP COLUMN nota_credito,
+  DROP COLUMN nota_debito,
+  DROP COLUMN nota_remision,
+  DROP COLUMN comprobante_liquidacion,
+  DROP COLUMN comprobante_retencion,
+  DROP COLUMN documento_contable_liquidacion,
+  DROP COLUMN comprobante_donacion,
+  DROP COLUMN factura_sujeto_excluido;
+
+
+ALTER TABLE `ventas`
+  DROP COLUMN `dte`, -- Eliminar el campo dte
+  CHANGE COLUMN `tipo_factura` `tipo_dte` ENUM(
+    'Factura',
+    'Crédito Fiscal',
+    'Factura Exportación',
+    'Nota Crédito',
+    'Nota Débito',
+    'Nota Remisión',
+    'Comprobante Liquidación',
+    'Comprobante Retención',
+    'Doc. Contable Liquidación',
+    'Comprobante Donación',
+    'Factura Sujeto Excluido'
+  ) NOT NULL DEFAULT 'Factura'; -- Renombrar y actualizar opciones
+ALTER TABLE `ventas`
+  DROP COLUMN `porcentaje_retencion`;
+
+
 
 -- Tabla `cajas` (ya propuesta, ajustada para múltiples por sucursal)
 CREATE TABLE `cajas` (
@@ -276,7 +420,7 @@ ALTER TABLE `ventas`
 ADD CONSTRAINT `fk_apertura`
 FOREIGN KEY (`apertura_id`) REFERENCES `aperturas_caja`(`id`) ON DELETE RESTRICT;
 
-select * from cajas;
+select * from detalle_ventas;
 
 SELECT * FROM empleados WHERE id = 11;
 SELECT * FROM usuarios WHERE empleado_id = 11;
@@ -343,15 +487,6 @@ CREATE TABLE ventas_sucursales_manual (
     UNIQUE (venta_id) -- Evita duplicados: una venta solo puede estar asignada a una sucursal
 );
 select * from ventas_sucursales_manual;
-
-
-
-
-
-
-
-
-
 
 
 
@@ -488,4 +623,16 @@ CREATE TABLE `usuarios` (
 select * from usuarios;
 use sistema_dycris;
 SELECT * FROM codigos_autorizacion;
+
+
+
+
+
+
+
+
+
+
+
+
 

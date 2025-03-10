@@ -14,7 +14,6 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _notasController;
   String? _metodoPago;
-  String? _tipoFactura;
 
   @override
   void initState() {
@@ -22,13 +21,11 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
     _notasController =
         TextEditingController(text: widget.venta['descripcion_compra'] ?? '');
     _metodoPago = widget.venta['metodo_pago'];
-    _tipoFactura = widget.venta['tipo_factura'];
   }
 
   void _guardarCambios() async {
     if (_formKey.currentState!.validate()) {
       final datosActualizados = {
-        'tipo_factura': _tipoFactura,
         'metodo_pago': _metodoPago,
         'descripcion_compra': _notasController.text,
       };
@@ -65,7 +62,6 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Campos de solo lectura
               Text("Cliente: ${widget.venta['cliente_nombre'] ?? 'N/A'}"),
               const SizedBox(height: 10),
               Text("Código: ${widget.venta['codigo_venta'] ?? 'N/A'}"),
@@ -75,23 +71,9 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
               Text("Total: \$${total.toStringAsFixed(2)}"),
               const SizedBox(height: 10),
               Text("Descuento: ${descuento.toStringAsFixed(2)}%"),
+              const SizedBox(height: 10),
+              Text("Tipo de DTE: ${widget.venta['tipo_dte'] ?? 'N/A'}"),
               const SizedBox(height: 20),
-              // Campos editables con validaciones
-              DropdownButtonFormField<String>(
-                value: _tipoFactura,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de Factura',
-                  border: OutlineInputBorder(),
-                ),
-                items: ['Consumidor Final', 'Crédito Fiscal', 'Ticket']
-                    .map((tipo) =>
-                        DropdownMenuItem(value: tipo, child: Text(tipo)))
-                    .toList(),
-                onChanged: (value) => setState(() => _tipoFactura = value),
-                validator: (value) =>
-                    value == null ? 'Seleccione un tipo de factura' : null,
-              ),
-              const SizedBox(height: 15),
               DropdownButtonFormField<String>(
                 value: _metodoPago,
                 decoration: const InputDecoration(
@@ -118,12 +100,9 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Ingrese el motivo del cambio';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Ingrese el motivo del cambio'
+                    : null,
               ),
             ],
           ),

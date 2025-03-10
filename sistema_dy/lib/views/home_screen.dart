@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sistema_dy/views/catalogo/lista_catalogo.dart';
+import 'package:sistema_dy/views/ubicaciones_productos/lista_ubicaciones.dart';
+import 'inventario/registrar_productos.dart';
 import 'modulo_usuarios/login_screen.dart';
 import 'modulo_usuarios/user_screen.dart';
 import 'modulo_empleados/empleados_screen.dart';
 import 'categoria/lista_categoria.dart';
-
 import 'movimientos/movimientos_screen.dart';
 import 'proveedores/proveedores_screen.dart';
 import 'sucursal/mostrar_sucursales.dart';
-
 import 'inventario/inventario_screen.dart';
 import 'package:flutter/foundation.dart';
 
@@ -63,29 +64,37 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  int? _hoveredCardIndex;
+
   @override
   void initState() {
     super.initState();
-
     if (kDebugMode) {
       print("Datos del usuario recibido: ${widget.userData}");
     }
   }
 
-  // Función para formatear la fecha
+  // Verifica permisos de administrador o root.
+  bool _hasAdminAccess() {
+    return (widget.userData['tipo_cuenta'] == 'Admin' ||
+            widget.userData['tipo_cuenta'] == 'Root') &&
+        (widget.userData['cargo'] == 'Administrador');
+  }
+
+  // Formatea la fecha ISO a un formato legible.
   String _formatDate(String isoDate) {
     try {
       DateTime date = DateTime.parse(isoDate);
       return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
     } catch (e) {
+      debugPrint("Error al formatear la fecha: $e");
       return 'Fecha no disponible';
     }
   }
 
   /// Muestra un menú emergente con la información del usuario.
   void _showUserModal(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final screenWidth = mediaQuery.size.width;
+    final screenWidth = MediaQuery.of(context).size.width;
     const menuWidth = 280.0;
     const rightMargin = 20.0;
     const topMargin = 50.0;
@@ -170,9 +179,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Text(
             label,
             style: TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
-                color: Colors.grey.shade700),
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: Colors.grey.shade700,
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -180,9 +190,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Text(
             value,
             style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: Colors.black87),
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: Colors.black87,
+            ),
           ),
         ),
       ],
@@ -238,9 +249,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Text(
                       widget.userData['usuario'],
                       style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: colorScheme.onSurface),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Icon(Icons.arrow_drop_down,
@@ -281,92 +293,245 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     } else {
                       crossAxisCount = 1;
                     }
-
                     return GridView.count(
                       crossAxisCount: crossAxisCount,
                       mainAxisSpacing: 20,
                       crossAxisSpacing: 20,
                       childAspectRatio: 1.8,
                       children: [
+                        // Tarjeta para Usuarios (índice 0)
                         DashboardCard(
+                          index: 0,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
                           title: 'Usuarios',
                           icon: Icons.group,
                           color: const Color.fromARGB(255, 96, 145, 241),
                           onTap: () {
-                            Navigator.push(
+                            if (!_hasAdminAccess()) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text("Acceso Denegado"),
+                                  content: const Text(
+                                      "No tiene permisos para acceder a la sección de usuarios."),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text("Aceptar"),
+                                    )
+                                  ],
+                                ),
+                              );
+                            } else {
+                              Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) =>
-                                        const UsuariosScreen()));
+                                        const UsuariosScreen()),
+                              );
+                            }
                           },
                         ),
+                        // Tarjeta para Empleados (índice 1)
                         DashboardCard(
+                          index: 1,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
                           title: 'Empleados',
                           icon: Icons.work,
                           color: Colors.indigo,
                           onTap: () {
-                            Navigator.push(
+                            if (!_hasAdminAccess()) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text("Acceso Denegado"),
+                                  content: const Text(
+                                      "No tiene permisos para acceder a la sección de empleados."),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text("Aceptar"),
+                                    )
+                                  ],
+                                ),
+                              );
+                            } else {
+                              Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) =>
-                                        const EmpleadosScreen()));
+                                        const EmpleadosScreen()),
+                              );
+                            }
                           },
                         ),
+                        // Tarjeta para Inventario (índice 2)
                         DashboardCard(
-                          title: 'Inventario',
+                          index: 2,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
+                          title: 'Ver inventario',
                           icon: Icons.inventory_2,
                           color: colorScheme.primary,
                           onTap: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => InventarioScreen()));
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => InventarioScreen()),
+                            );
                           },
                         ),
                         DashboardCard(
+                          index: 2,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
+                          title: 'Entradas',
+                          icon: Icons.inventory_2,
+                          color: colorScheme.primary,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => RegistrarProductos()),
+                            );
+                          },
+                        ),
+                        DashboardCard(
+                          index: 2,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
+                          title: 'Ubicaciones',
+                          icon: Icons.inventory_2,
+                          color: colorScheme.primary,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ListaUbicaciones()),
+                            );
+                          },
+                        ),
+                        DashboardCard(
+                          index: 2,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
+                          title: 'Catalogo',
+                          icon: Icons.inventory_2,
+                          color: colorScheme.primary,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ListaCatalogo()),
+                            );
+                          },
+                        ),
+                        // Tarjeta para Proveedores (índice 3)
+                        DashboardCard(
+                          index: 3,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
                           title: 'Proveedores',
                           icon: Icons.person_remove_rounded,
                           color: colorScheme.tertiary,
                           onTap: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const ProveedoresScreen()));
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ProveedoresScreen()),
+                            );
                           },
                         ),
+                        // Tarjeta para Categorías (índice 4)
                         DashboardCard(
+                          index: 4,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
                           title: 'Categorias',
                           icon: Icons.category,
                           color: colorScheme.tertiary,
                           onTap: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => ListaCategorias()));
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ListaCategorias()),
+                            );
                           },
                         ),
+                        // Tarjeta para Sucursales (índice 5)
                         DashboardCard(
+                          index: 5,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
                           title: 'Sucursales',
                           icon: Icons.store,
                           color: colorScheme.tertiary,
                           onTap: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => MostrarSucursales()));
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => MostrarSucursales()),
+                            );
                           },
                         ),
+                        // Tarjeta para Facturación (índice 6)
                         DashboardCard(
+                          index: 6,
+                          hoveredCardIndex: _hoveredCardIndex,
+                          onHoverChanged: (i) {
+                            setState(() {
+                              _hoveredCardIndex = i;
+                            });
+                          },
                           title: 'Facturación',
                           icon: Icons.swap_horiz,
                           color: Colors.orange,
                           onTap: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const MovimientosScreen()));
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const MovimientosScreen()),
+                            );
                           },
                         ),
                       ],
@@ -380,71 +545,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
-  void _showSnack(BuildContext context, String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Sección seleccionada: $text'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
 }
 
-class DashboardCard extends StatelessWidget {
+/// Widget de tarjeta del dashboard que reacciona al estado global de hover.
+/// En esta versión, solo la tarjeta en la que se pasa el mouse se reduce a 0.95, mientras las demás mantienen su tamaño.
+class DashboardCard extends StatefulWidget {
+  final int index;
+  final int? hoveredCardIndex;
+  final Function(int?) onHoverChanged;
   final String title;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
 
-  const DashboardCard(
-      {super.key,
-      required this.title,
-      required this.icon,
-      required this.color,
-      required this.onTap});
+  const DashboardCard({
+    super.key,
+    required this.index,
+    required this.hoveredCardIndex,
+    required this.onHoverChanged,
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
+  @override
+  State<DashboardCard> createState() => _DashboardCardState();
+}
+
+class _DashboardCardState extends State<DashboardCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Si esta tarjeta está hover, se reduce a 0.95; en caso contrario, se mantiene en 1.0.
+    final bool isHovered = widget.hoveredCardIndex == widget.index;
+    final double scale = isHovered ? 0.95 : 1.0;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
+      onEnter: (_) => widget.onHoverChanged(widget.index),
+      onExit: (_) => widget.onHoverChanged(null),
       child: GestureDetector(
-        onTap: onTap,
+        onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
+          transform: Matrix4.identity()..scale(scale),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             color: theme.cardColor,
+            border: Border.all(color: Colors.grey.shade300, width: 1),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2)),
+                color: Colors.black.withOpacity(isHovered ? 0.2 : 0.15),
+                blurRadius: isHovered ? 12 : 10,
+                offset: Offset(0, isHovered ? 4 : 2),
+              ),
             ],
           ),
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                        color: color.withOpacity(0.1), shape: BoxShape.circle),
-                    child: Icon(icon, size: 32, color: color),
+                      color: widget.color.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(widget.icon, size: 36, color: widget.color),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
-                    title,
+                    widget.title,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium!.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: title.contains('\n') ? 18 : 16),
+                      fontWeight: FontWeight.bold,
+                      fontSize: widget.title.contains('\n') ? 18 : 16,
+                      color: Colors.black87,
+                    ),
                   ),
                 ],
               ),

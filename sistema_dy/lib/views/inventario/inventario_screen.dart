@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:sistema_dy/views/inventario/historial_registro.dart';
 import 'dart:convert';
 import 'inventario_completo.dart';
 import 'registrar_productos.dart';
@@ -38,10 +39,10 @@ class _InventarioScreenState extends State<InventarioScreen> {
           productosFiltrados = inventario;
         });
       } else {
-        throw Exception('Error al cargar el inventario');
+        _showErrorDialog('Error al cargar el inventario');
       }
     } catch (error) {
-      print('Error al obtener el inventario: $error');
+      _showErrorDialog('Error al obtener el inventario: $error');
     }
   }
 
@@ -63,10 +64,10 @@ class _InventarioScreenState extends State<InventarioScreen> {
         final List<dynamic> detalles = json.decode(response.body);
         _showModalDetalles(detalles);
       } else {
-        throw Exception('Error al cargar los detalles del producto');
+        _showErrorDialog('Error al cargar los detalles del producto');
       }
     } catch (error) {
-      print('Error al obtener los detalles del producto: $error');
+      _showErrorDialog('Error al obtener los detalles del producto: $error');
     }
   }
 
@@ -75,7 +76,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Detalles del Producto'),
+          title: const Text('Detalles del Producto'),
           content: SingleChildScrollView(
             child: DataTable(
               columnSpacing: 40,
@@ -86,43 +87,24 @@ class _InventarioScreenState extends State<InventarioScreen> {
                 (Set<MaterialState> states) => Colors.grey[50]!,
               ),
               columns: const [
-                DataColumn(
-                    label: Text('Código',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Nombre',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Descripción',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Número de Motor',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Número de Chasis',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Número de Póliza',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Número de Lote',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Stock Existencia',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Marca', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Color', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Número de Motor', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Nro.Chasis', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Stock Existencia', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Precio', style: TextStyle(fontWeight: FontWeight.bold))),
               ],
               rows: detalles.map<DataRow>((producto) {
                 return DataRow(
                   cells: [
-                    DataCell(Text(producto['codigo'] ?? '')),
                     DataCell(Text(producto['nombre'] ?? '')),
-                    DataCell(Text(producto['descripcion'] ?? '')),
+                    DataCell(Text(producto['marca'] ?? '')),
+                    DataCell(Text(producto['color'] ?? '')),
                     DataCell(Text(producto['numero_motor'] ?? '')),
                     DataCell(Text(producto['numero_chasis'] ?? '')),
-                    DataCell(Text(producto['numero_poliza'] ?? '')),
-                    DataCell(Text(producto['numero_lote'] ?? '')),
-                    DataCell(
-                        Text(producto['stock_existencia'].toString() ?? '0')),
+                    DataCell(Text(producto['stock_existencia'].toString() ?? '0')),
+                    DataCell(Text('\$${producto['precio_venta']?.toString() ?? '0'}')),
                   ],
                 );
               }).toList(),
@@ -130,7 +112,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
           ),
           actions: <Widget>[
             TextButton(
-              child: Text('Cerrar'),
+              child: const Text('Cerrar'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -138,6 +120,22 @@ class _InventarioScreenState extends State<InventarioScreen> {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _showErrorDialog(String message) async {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -197,10 +195,9 @@ class _InventarioScreenState extends State<InventarioScreen> {
                     icon: const Icon(Icons.add_to_photos, size: 20),
                     label: const Text('Agregar nuevo'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2A2D3E),
+                      backgroundColor: const Color(0xFF4CAF50), // Verde
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -229,125 +226,52 @@ class _InventarioScreenState extends State<InventarioScreen> {
                   borderRadius: BorderRadius.circular(16),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: SingleChildScrollView(
-                      child: DataTable(
-                        columnSpacing: 40,
-                        horizontalMargin: 24,
-                        headingRowHeight: 56,
-                        dataRowHeight: 80,
-                        headingRowColor:
-                            MaterialStateProperty.resolveWith<Color>(
-                          (Set<MaterialState> states) => Colors.grey[50]!,
-                        ),
-                        columns: const [
-                          DataColumn(
-                              label: Text('Código',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Imagen',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Nombre',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Descripción',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Costo',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Precio Venta',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Stock Total',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Stock Mínimo',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Acciones',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                        ],
-                        rows: productosFiltrados
-                            .map(
-                              (inventario) => DataRow(
-                                cells: [
-                                  DataCell(Text(inventario['codigo'] ?? '')),
-                                  DataCell(
-                                    Image.network(
-                                      'http://localhost:3000' +
-                                          (inventario['imagen'] ??
-                                              '/uploads/empty.png'),
-                                      width: 70,
-                                      height: 70,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (BuildContext context,
-                                          Object error,
-                                          StackTrace? stackTrace) {
-                                        return Image.network(
-                                          'http://localhost:3000/uploads/empty.png',
-                                          width: 70,
-                                          height: 70,
-                                          fit: BoxFit.cover,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  DataCell(
-                                    GestureDetector(
-                                      onTap: () {
-                                        _showDetallesProducto(
-                                            inventario['nombre'],
-                                            inventario['descripcion']);
-                                      },
-                                      child: Text(inventario['nombre'] ?? ''),
-                                    ),
-                                  ),
-                                  DataCell(
-                                      Text(inventario['descripcion'] ?? '')),
-                                  DataCell(Text(
-                                      '\$${inventario['costo']?.toString() ?? '0'}')),
-                                  DataCell(Text(
-                                      '\$${inventario['precio_venta']?.toString() ?? '0'}')),
-                                  DataCell(Text(inventario['stock_total']
-                                          .toString() ??
-                                      '0')), // Asegúrate de que este campo esté en la respuesta del backend
-                                  DataCell(Text(
-                                      inventario['stock_minimo'].toString() ??
-                                          '0')),
-                                  DataCell(
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit,
-                                              color: Colors.blue),
-                                          onPressed: () =>
-                                              _showEditProductoDialog(
-                                                  inventario),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete,
-                                              color: Colors.red),
-                                          onPressed: () =>
-                                              _confirmDelete(inventario['id']),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                    child: DataTable(
+                      columnSpacing: 40,
+                      horizontalMargin: 24,
+                      headingRowHeight: 56,
+                      dataRowHeight: 80,
+                      headingRowColor: MaterialStateProperty.resolveWith<Color>(
+                        (Set<MaterialState> states) => Colors.grey[50]!,
+                      ),
+                      columns: const [
+                        DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Descripción', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Marca', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Stock Total', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
+                      ],
+                      rows: productosFiltrados.map<DataRow>((inventario) {
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              GestureDetector(
+                                onTap: () {
+                                  _showDetallesProducto(inventario['nombre'], inventario['descripcion']);
+                                },
+                                child: Text(inventario['nombre'] ?? ''),
+                              ),
+                            ),
+                            DataCell(Text(inventario['descripcion'] ?? '')),
+                            DataCell(Text(inventario['marca'] ?? '')),
+                            DataCell(Text(inventario['stock_total'].toString() ?? '0')),
+                            DataCell(
+                              Row(
+                                children: [
+                                  //IconButton(
+                                    //icon: const Icon(Icons.edit, color: Colors.blue),
+                                    //onPressed: () => _showEditProductoDialog(inventario),
+                                  //),
+                                //  IconButton(
+                                  //  icon: const Icon(Icons.delete, color: Colors.red),
+                                    //onPressed: () => _confirmDelete(inventario['id']),
+                                  //),
                                 ],
                               ),
-                            )
-                            .toList(),
-                      ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
                     ),
                   ),
                 ),
@@ -355,12 +279,11 @@ class _InventarioScreenState extends State<InventarioScreen> {
             ),
             const SizedBox(height: 16),
             // Botones adicionales
-            Column(
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: 250,
+                  width: 150,
                   height: 50,
                   child: ElevatedButton(
                     onPressed: () {
@@ -372,7 +295,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 18, 78, 183),
+                      backgroundColor: const Color(0xFF2196F3), // Azul
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -389,9 +312,9 @@ class _InventarioScreenState extends State<InventarioScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(width: 20), // Espacio entre los botones
                 SizedBox(
-                  width: 250,
+                  width: 150,
                   height: 50,
                   child: ElevatedButton(
                     onPressed: () {
@@ -403,7 +326,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 11, 154, 37),
+                      backgroundColor: const Color(0xFF4CAF50), // Verde
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -411,7 +334,38 @@ class _InventarioScreenState extends State<InventarioScreen> {
                       elevation: 5,
                     ),
                     child: const Text(
-                      'Ver Historial de Ajustes',
+                      'Historial de Ajustes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20), // Espacio entre los botones
+                SizedBox(
+                  width: 150,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HistorialIngresoScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color.fromARGB(255, 175, 129, 76), // Verde
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 5,
+                    ),
+                    child: const Text(
+                      'Historial de Ingreso',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -439,16 +393,14 @@ class _InventarioScreenState extends State<InventarioScreen> {
             Text('Confirmar eliminación'),
           ],
         ),
-        content: Text('¿Está seguro de eliminar el producto?'),
+        content: const Text('¿Está seguro de eliminar el producto?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            style: _alertButtonStyle(),
             child: const Text('Cancelar'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: _alertButtonStyle(),
             child: const Text('Eliminar'),
           ),
         ],
@@ -493,7 +445,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
       String title, String message, IconData icon, Color iconColor) async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: true,
       builder: (context) => AlertDialog(
         title: Row(
           children: [
@@ -506,24 +457,9 @@ class _InventarioScreenState extends State<InventarioScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            style: _alertButtonStyle(),
             child: const Text('OK'),
           ),
         ],
-      ),
-    );
-  }
-
-  ButtonStyle _alertButtonStyle() {
-    return ButtonStyle(
-      backgroundColor: WidgetStateProperty.resolveWith<Color?>(
-        (Set<WidgetState> states) {
-          if (states.contains(WidgetState.hovered) ||
-              states.contains(WidgetState.focused)) {
-            return Colors.grey[200];
-          }
-          return Colors.transparent;
-        },
       ),
     );
   }
@@ -533,7 +469,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
     String descripcion,
     String precioVenta,
     String motivoCambio,
-    String? imageUrl, // Nueva URL de la imagen
+    String? imageUrl,
   ) async {
     final url = Uri.parse('http://localhost:3000/api/inventario/edit');
     final Map<String, dynamic> body = {
@@ -577,8 +513,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
     }
   }
 
-  Future<void> _showEditProductoDialog(
-      Map<String, dynamic> productoData) async {
+  Future<void> _showEditProductoDialog(Map<String, dynamic> productoData) async {
     final TextEditingController nombreController =
         TextEditingController(text: productoData['nombre'] ?? '');
     final TextEditingController descripcionController =
@@ -592,8 +527,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
     String? imageName;
 
     // Obtener la URL de la imagen actual (si existe)
-    String? currentImageUrl = productoData[
-        'imagen']; // Suponiendo que 'imagen' contiene la URL de la imagen
+    String? currentImageUrl = productoData['imagen'];
 
     return showDialog<void>(
       context: context,
@@ -610,12 +544,9 @@ class _InventarioScreenState extends State<InventarioScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildTextField('Nombre', Icons.business, nombreController),
-                    _buildTextField('Descripción', Icons.description,
-                        descripcionController),
-                    _buildTextField('Precio de Venta', Icons.attach_money,
-                        precioVentaController),
-                    _buildTextField('Motivo del Cambio', Icons.edit_note,
-                        motivoCambioController),
+                    _buildTextField('Descripción', Icons.description, descripcionController),
+                    _buildTextField('Precio de Venta', Icons.attach_money, precioVentaController),
+                    _buildTextField('Motivo del Cambio', Icons.edit_note, motivoCambioController),
 
                     // Mostrar la imagen actual o la nueva, dependiendo de si hay una nueva seleccionada
                     if (imageBytes != null)
@@ -623,12 +554,11 @@ class _InventarioScreenState extends State<InventarioScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         child: Image.memory(imageBytes!, height: 100),
                       )
-                    else if (currentImageUrl != null &&
-                        currentImageUrl.isNotEmpty)
+                    else if (currentImageUrl != null && currentImageUrl.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         child: Image.network(
-                          currentImageUrl, // Usar la URL actual sin prefijo
+                          currentImageUrl,
                           height: 100,
                           fit: BoxFit.cover,
                         ),
@@ -659,16 +589,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
               actions: [
                 ElevatedButton(
                   onPressed: () async {
-                    if (productoData['nombre'] == null) {
-                      await _showAlertDialog(
-                        'Error',
-                        'No se pudo obtener el nombre del producto',
-                        Icons.error,
-                        Colors.red,
-                      );
-                      return;
-                    }
-
                     if (nombreController.text.trim().isEmpty ||
                         descripcionController.text.trim().isEmpty ||
                         precioVentaController.text.trim().isEmpty ||
@@ -685,8 +605,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
                     // Subir imagen si hay una nueva seleccionada
                     String? nuevaImagenUrl;
                     if (imageBytes != null && imageName != null) {
-                      nuevaImagenUrl =
-                          await _uploadImage(imageBytes!, imageName!);
+                      nuevaImagenUrl = await _uploadImage(imageBytes!, imageName!);
                     } else {
                       // Si no hay una imagen nueva, mantener la imagen actual
                       nuevaImagenUrl = currentImageUrl;
@@ -698,7 +617,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
                       descripcionController.text.trim(),
                       precioVentaController.text.trim(),
                       motivoCambioController.text.trim(),
-                      nuevaImagenUrl, // Pasar la URL de la imagen
+                      nuevaImagenUrl,
                     );
 
                     if (mounted) {
@@ -720,7 +639,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
   }
 
   Future<String?> _uploadImage(Uint8List imageBytes, String imageName) async {
-    final url = Uri.parse('http://localhost:3000/api/upload'); // Ajusta la URL
+    final url = Uri.parse('http://localhost:3000/api/upload');
     final request = http.MultipartRequest('POST', url);
 
     request.files.add(
@@ -736,8 +655,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
       if (response.statusCode == 200) {
         final responseData = await response.stream.bytesToString();
         final jsonResponse = json.decode(responseData);
-        return jsonResponse[
-            'imageUrl']; // Ajusta según la respuesta del servidor
+        return jsonResponse['imageUrl'];
       } else {
         print('Error al subir la imagen: ${response.reasonPhrase}');
         return null;
@@ -748,9 +666,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
     }
   }
 
-  /// Genera un campo de texto con icono.
-  Widget _buildTextField(
-      String label, IconData icon, TextEditingController controller) {
+  Widget _buildTextField(String label, IconData icon, TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -761,29 +677,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         ),
         textInputAction: TextInputAction.next,
-      ),
-    );
-  }
-
-  /// Genera un menú desplegable con opciones.
-  Widget _buildDropdown(String label, IconData icon, String value,
-      List<String> items, ValueChanged<String?> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-        ),
-        items: items.map((item) {
-          return DropdownMenuItem<String>(
-            value: item,
-            child: Text(item),
-          );
-        }).toList(),
-        onChanged: onChanged,
       ),
     );
   }

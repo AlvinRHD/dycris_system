@@ -6,18 +6,20 @@ class OfertasApi {
 
   // Obtener ofertas con filtros opcionales
   Future<Map<String, dynamic>> getOfertas(
-      {int? categoriaId,
+      {String? categoria, // Cambiado de int? categoriaId a String? categoria
       String? searchQuery,
       String? estado,
       int page = 1,
       int limit = 10}) async {
     String url = '$baseUrl/ofertas?page=$page&limit=$limit';
-    if (categoriaId != null ||
+    if (categoria != null ||
         (searchQuery != null && searchQuery.isNotEmpty) ||
         estado != null) {
       url += '&';
       List<String> params = [];
-      if (categoriaId != null) params.add('categoria_id=$categoriaId');
+      if (categoria != null)
+        params.add(
+            'categoria_id=$categoria'); // Sigue usando categoria_id como nombre del parámetro por compatibilidad con backend
       if (searchQuery != null && searchQuery.isNotEmpty)
         params.add('nombre=$searchQuery');
       if (estado != null) params.add('estado=$estado');
@@ -73,12 +75,15 @@ class OfertasApi {
 
   // Buscar productos
   Future<List<dynamic>> searchProductos(
-      {int? categoriaId, String? nombre}) async {
+      {String? categoria, String? nombre}) async {
+    // Cambiado de int? categoriaId a String? categoria
     String url = '$baseUrl/buscar-inventario';
-    if (categoriaId != null || (nombre != null && nombre.isNotEmpty)) {
+    if (categoria != null || (nombre != null && nombre.isNotEmpty)) {
       url += '?';
       List<String> params = [];
-      if (categoriaId != null) params.add('categoria_id=$categoriaId');
+      if (categoria != null)
+        params.add(
+            'categoria_id=$categoria'); // Nombre del parámetro sigue siendo categoria_id por compatibilidad
       if (nombre != null && nombre.isNotEmpty) params.add('nombre=$nombre');
       url += params.join('&');
     }

@@ -43,16 +43,6 @@ class _InventarioCompletoScreenState extends State<InventarioCompletoScreen> {
     }
   }
 
-  String _formatDate(String date) {
-    try {
-      final DateTime parsedDate = DateTime.parse(date);
-      final DateFormat formatter = DateFormat('yyyy-MM-dd');
-      return formatter.format(parsedDate);
-    } catch (e) {
-      return '';
-    }
-  }
-
   void _filterProductosCompletos() {
     String query = _searchController.text.toLowerCase();
     setState(() {
@@ -66,6 +56,102 @@ class _InventarioCompletoScreenState extends State<InventarioCompletoScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _showEditDialog(Map<String, dynamic> inventario) {
+    final TextEditingController nombreController = TextEditingController(text: inventario['nombre']);
+    final TextEditingController descripcionController = TextEditingController(text: inventario['descripcion']);
+    final TextEditingController marcaController = TextEditingController(text: inventario['marca']);
+    final TextEditingController precioController = TextEditingController(text: inventario['precio_venta'].toString());
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Editar Producto'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nombreController, decoration: InputDecoration(labelText: 'Nombre')),
+              TextField(controller: descripcionController, decoration: InputDecoration(labelText: 'Descripción')),
+              TextField(controller: marcaController, decoration: InputDecoration(labelText: 'Marca')),
+              TextField(controller: precioController, decoration: InputDecoration(labelText: 'Precio')),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (nombreController.text.isEmpty || precioController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Por favor, completa todos los campos.')));
+                  return;
+                }
+
+                double? precio = double.tryParse(precioController.text);
+                if (precio == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('El precio debe ser un número válido.')));
+                  return;
+                }
+
+                _editProduct(inventario['id'], nombreController.text, descripcionController.text, marcaController.text, precio);
+                Navigator.of(context).pop();
+              },
+              child: Text('Guardar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancelar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _editProduct(int id, String nombre, String descripcion, String marca, double precio) async {
+    final url = Uri.parse('http://localhost:3000/api/inventario/edit/$id');
+    try {
+      final response = await http.put(url, body: json.encode({
+        'nombre': nombre,
+        'descripcion': descripcion,
+        'marca': marca,
+        'precio_venta': precio,
+        'motivo': 'Edición de producto'
+      }), headers: {'Content-Type': 'application/json'});
+
+      if (response.statusCode == 200) {
+        setState(() {
+          final index = inventario.indexWhere((item) => item['id'] == id);
+          if (index != -1) {
+            inventario[index] = {
+              ...inventario[index],
+              'nombre': nombre,
+              'descripcion': descripcion,
+              'marca': marca,
+              'precio_venta': precio,
+            };
+          }
+        });
+      } else {
+        throw Exception('Error al editar el producto');
+      }
+    } catch (error) {
+      print('Error al editar el producto: $error');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al editar el producto.')));
+    }
+  }
+
+  Future<void> _deleteProduct(int id) async {
+    final url = Uri.parse('http://localhost:3000/api/inventario/$id');
+    try {
+      final response = await http.delete(url);
+      if (response.statusCode == 200) {
+        _fetchInventarioCompleto(); // Refrescar la lista
+      } else {
+        throw Exception('Error al eliminar el producto');
+      }
+    } catch (error) {
+      print('Error al eliminar el producto: $error');
+    }
   }
 
   @override
@@ -87,7 +173,7 @@ class _InventarioCompletoScreenState extends State<InventarioCompletoScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black),
+                border: Border.all(color: const Color.fromARGB(255, 160, 6, 6)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey.withOpacity(0.1),
@@ -136,154 +222,61 @@ class _InventarioCompletoScreenState extends State<InventarioCompletoScreen> {
                   borderRadius: BorderRadius.circular(16),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: SingleChildScrollView(
-                      child: DataTable(
-                        columnSpacing: 40,
-                        horizontalMargin: 24,
-                        headingRowHeight: 56,
-                        dataRowHeight: 80,
-                        headingRowColor:
-                            MaterialStateProperty.resolveWith<Color>(
-                          (Set<MaterialState> states) => Colors.grey[50]!,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black12),
-                        ),
-                        columns: const [
-                          DataColumn(
-                              label: Text('Código',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Imagen',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Nombre',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Descripcion',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Número Motor',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Número Chasis',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Categoría',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Sucursal',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Costo',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Crédito',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Precio Venta',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Existencia',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Stock Mínimo',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Fecha Ingreso',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Fecha Reingreso',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Número Póliza',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Número Lote',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
-                              label: Text('Proveedor',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                        ],
-                        rows: productosFiltrados
-                            .map(
-                              (inventario) => DataRow(
-                                cells: [
-                                  DataCell(Text(inventario['codigo'] ?? '')),
-                                  DataCell(
-                                    Image.network(
-                                      'http://localhost:3000' +
-                                          (inventario['imagen'] ??
-                                              '/uploads/empty.png'),
-                                      width: 70,
-                                      height: 70,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (BuildContext context,
-                                          Object error,
-                                          StackTrace? stackTrace) {
-                                        return Image.network(
-                                          'http://localhost:3000/uploads/empty.png',
-                                          width: 70,
-                                          height: 70,
-                                          fit: BoxFit.cover,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  DataCell(Text(inventario['nombre'] ?? '')),
-                                  DataCell(
-                                      Text(inventario['descripcion'] ?? '')),
-                                  DataCell(
-                                      Text(inventario['numero_motor'] ?? '')),
-                                  DataCell(
-                                      Text(inventario['numero_chasis'] ?? '')),
-                                  DataCell(Text(inventario['categoria'] ?? '')),
-                                  DataCell(Text(inventario['sucursal'] ?? '')),
-                                  DataCell(Text(
-                                      '\$${inventario['costo']?.toString() ?? '0'}')),
-                                  DataCell(Text(
-                                      '\$${inventario['credito']?.toString() ?? '0'}')),
-                                  DataCell(Text(
-                                      '\$${inventario['precio_venta']?.toString() ?? '0'}')),
-                                  DataCell(Text(inventario['stock_existencia']
-                                          ?.toString() ??
-                                      '0')),
-                                  DataCell(Text(
-                                      inventario['stock_minimo']?.toString() ??
-                                          '0')),
-                                  DataCell(Text(_formatDate(
-                                      inventario['fecha_ingreso'] ?? ''))),
-                                  DataCell(Text(_formatDate(
-                                      inventario['fecha_reingreso'] ?? ''))),
-                                  DataCell(
-                                      Text(inventario['numero_poliza'] ?? '')),
-                                  DataCell(
-                                      Text(inventario['numero_lote'] ?? '')),
-                                  DataCell(
-                                      Text(inventario['proveedores'] ?? '')),
-                                ],
-                              ),
-                            )
-                            .toList(),
+                    child: DataTable(
+                      columnSpacing: 40,
+                      horizontalMargin: 24,
+                      headingRowHeight: 56,
+                      dataRowHeight: 80,
+                      headingRowColor:
+                          MaterialStateProperty.resolveWith<Color>(
+                        (Set<MaterialState> states) => Colors.grey[50]!,
                       ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black12),
+                      ),
+                      columns: const [
+                        DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Descripción', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Marca', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Color', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Número Motor', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Número Chasis', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Precio Venta', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Categoría', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Sucursal', style: TextStyle(fontWeight: FontWeight.bold))), 
+                        DataColumn(label: Text('Existencia', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Poliza', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
+                      ],
+                      rows: productosFiltrados.map((inventario) => DataRow(
+                        cells: [
+                          DataCell(Text(inventario['codigo'] ?? '')),
+                          DataCell(Text(inventario['nombre'] ?? '')),
+                          DataCell(Text(inventario['descripcion'] ?? '')),
+                          DataCell(Text(inventario['marca'] ?? '')),
+                          DataCell(Text(inventario['color'] ?? '')),
+                          DataCell(Text(inventario['numero_motor'] ?? '')),
+                          DataCell(Text(inventario['numero_chasis'] ?? '')),
+                          DataCell(Text('\$${inventario['precio_venta']?.toString() ?? '0'}')),
+                          DataCell(Text(inventario['categoria'] ?? '')),
+                          DataCell(Text(inventario['sucursal'] ?? '')),
+                          DataCell(Text(inventario['stock_existencia']?.toString() ?? '0')),
+                          DataCell(Text(inventario['poliza'] ?? '')),
+                          DataCell(Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit),
+                                onPressed: () => _showEditDialog(inventario),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete),
+                                onPressed: () => _deleteProduct(inventario['id']),
+                              ),
+                            ],
+                          )),
+                        ],
+                      )).toList(),
                     ),
                   ),
                 ),

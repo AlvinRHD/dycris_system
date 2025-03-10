@@ -20,51 +20,42 @@ async function generateCode(db, prefix, table, column) {
 
 // ------------------ VENTAS ------------------
 
+// POST /ventas/autorizar-descuento - Autorizar descuento
 router.post('/ventas/autorizar-descuento', async (req, res) => {
-  const { codigo } = req.body;
   try {
-    const [rows] = await req.db.query('SELECT codigo FROM codigos_autorizacion');
-    for (const row of rows) {
+    const { codigo } = req.body;
+    const [codigos] = await req.db.query('SELECT codigo FROM codigos_autorizacion');
+    let autorizado = false;
+    for (const row of codigos) {
       if (await bcrypt.compare(codigo, row.codigo)) {
-        return res.json({ autorizado: true });
+        autorizado = true;
+        break;
       }
     }
-    res.json({ autorizado: false });
+    res.json({ autorizado });
   } catch (err) {
-    console.error('Error al autorizar descuento:', err);
-    res.status(500).json({ message: 'Error al autorizar descuento', error: err.message });
+    console.error('Error al verificar código:', err);
+    res.status(500).json({ message: 'Error al verificar código', error: err.message });
   }
 });
 
-router.post("/ventas", async (req, res) => {
+// POST /ventas - Agregar una nueva venta
+router.post('/ventas', async (req, res) => {
   try {
     const {
-      codigo_venta,
-      cliente_id,
+      cliente_id = 1, // Cliente de Paso por defecto
       empleado_id,
-      tipo_factura,
+      tipo_dte = 'Factura', // Valor por defecto
       metodo_pago,
       total,
       descripcion_compra,
       productos,
-      fecha_venta,
-      factura,
-      comprobante_credito_fiscal,
-      factura_exportacion,
-      nota_credito,
-      nota_debito,
-      nota_remision,
-      comprobante_liquidacion,
-      comprobante_retencion,
-      documento_contable_liquidacion,
-      comprobante_donacion,
-      factura_sujeto_excluido,
+      apertura_id,
       descuento,
-      codigo_autorizacion, // Nuevo campo opcional para el código de autorización
-      apertura_id // Nuevo campo requerido
+      codigo_autorizacion
     } = req.body;
 
-    // Validar que haya una apertura activa
+    // Validar apertura activa
     const [apertura] = await req.db.query(
       'SELECT id FROM aperturas_caja WHERE id = ? AND NOT EXISTS (SELECT 1 FROM cierres_caja WHERE apertura_id = ?)',
       [apertura_id, apertura_id]
@@ -73,37 +64,33 @@ router.post("/ventas", async (req, res) => {
       return res.status(400).json({ message: 'No hay una apertura de caja activa para esta venta' });
     }
 
-    // Generar código automático si no se proporciona
-    const finalCodigoVenta = codigo_venta || await generateCode(req.db, 'VGR', 'ventas', 'codigo_venta');
+    const finalCodigoVenta = await generateCode(req.db, 'VGR', 'ventas', 'codigo_venta');
 
-    // Validaciones básicas
-    if (!empleado_id) return res.status(400).json({ message: "El ID del empleado es requerido" });
-    
+    if (!empleado_id) return res.status(400).json({ message: 'El ID del empleado es requerido' });
+
     const [empleado] = await req.db.query(
       `SELECT e.id, u.tipo_cuenta 
        FROM empleados e 
        LEFT JOIN usuarios u ON e.id = u.empleado_id 
-       WHERE e.id = ?`, 
+       WHERE e.id = ?`,
       [empleado_id]
     );
-    if (empleado.length === 0) return res.status(400).json({ message: "Empleado no encontrado" });
+    if (empleado.length === 0) return res.status(400).json({ message: 'Empleado no encontrado' });
 
     for (const producto of productos) {
-      const [inventario] = await req.db.query("SELECT stock_existencia FROM inventario WHERE codigo = ?", [producto.codigo_producto]);
+      const [inventario] = await req.db.query('SELECT stock_existencia FROM inventario WHERE codigo = ?', [producto.codigo_producto]);
       if (inventario.length === 0) return res.status(404).json({ message: `Producto ${producto.codigo_producto} no encontrado` });
       if (inventario[0].stock_existencia < producto.cantidad) {
         return res.status(400).json({ message: `Stock insuficiente para el producto ${producto.codigo_producto}` });
       }
     }
 
-    // Validación de descuento
     const descuentoValue = parseFloat(descuento) || 0.0;
     if (descuentoValue > 0) {
       const tipoCuenta = empleado[0].tipo_cuenta;
       if (tipoCuenta !== 'Admin' && tipoCuenta !== 'Root') {
-        // Requiere código de autorización
         if (!codigo_autorizacion) {
-          return res.status(403).json({ message: "Se requiere autorización para aplicar descuento" });
+          return res.status(403).json({ message: 'Se requiere autorización para aplicar descuento' });
         }
         const [codigos] = await req.db.query('SELECT codigo FROM codigos_autorizacion');
         let autorizado = false;
@@ -114,33 +101,24 @@ router.post("/ventas", async (req, res) => {
           }
         }
         if (!autorizado) {
-          return res.status(403).json({ message: "Código de autorización inválido" });
+          return res.status(403).json({ message: 'Código de autorización inválido' });
         }
       }
     }
 
-    // Insertar venta con apertura_id
     const [ventaResult] = await req.db.query(
       `INSERT INTO ventas (
-        codigo_venta, cliente_id, empleado_id, tipo_factura, metodo_pago, total, 
-        descripcion_compra, fecha_venta, factura, comprobante_credito_fiscal, 
-        factura_exportacion, nota_credito, nota_debito, nota_remision, 
-        comprobante_liquidacion, comprobante_retencion, documento_contable_liquidacion, 
-        comprobante_donacion, factura_sujeto_excluido, descuento, apertura_id, sucursal_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        codigo_venta, cliente_id, empleado_id, tipo_dte, metodo_pago, total, 
+        descripcion_compra, descuento, apertura_id, sucursal_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        finalCodigoVenta, cliente_id, empleado_id, tipo_factura, metodo_pago, total,
-        descripcion_compra, fecha_venta || new Date(), factura || null, comprobante_credito_fiscal || null,
-        factura_exportacion || null, nota_credito || null, nota_debito || null, nota_remision || null,
-        comprobante_liquidacion || null, comprobante_retencion || null, documento_contable_liquidacion || null,
-        comprobante_donacion || null, factura_sujeto_excluido || null, descuento || 0.0, 
-        apertura_id, 4 // Sucursal por defecto
+        finalCodigoVenta, cliente_id, empleado_id, tipo_dte, metodo_pago, total,
+        descripcion_compra || null, descuento || 0.0, apertura_id, 4 // Sucursal por defecto
       ]
     );
 
     const ventaId = ventaResult.insertId;
 
-    // Insertar detalles y actualizar stock
     for (const producto of productos) {
       await req.db.query(
         `INSERT INTO detalle_ventas (idVentas, codigo_producto, nombre, cantidad, precio_unitario, subtotal)
@@ -148,148 +126,147 @@ router.post("/ventas", async (req, res) => {
         [ventaId, producto.codigo_producto, producto.nombre, producto.cantidad, producto.precio_unitario, producto.subtotal]
       );
       await req.db.query(
-        "UPDATE inventario SET stock_existencia = stock_existencia - ? WHERE codigo = ?",
+        'UPDATE inventario SET stock_existencia = stock_existencia - ? WHERE codigo = ?',
         [producto.cantidad, producto.codigo_producto]
       );
     }
 
-    res.status(201).json({ message: "Venta agregada correctamente", ventaId, codigo_venta: finalCodigoVenta });
+    res.status(201).json({ message: 'Venta agregada correctamente', ventaId, codigo_venta: finalCodigoVenta });
   } catch (err) {
-    console.error("Error al agregar la venta:", err);
-    res.status(500).json({ message: "Error al agregar la venta", error: err.message });
+    console.error('Error al agregar la venta:', err);
+    res.status(500).json({ message: 'Error al agregar la venta', error: err.message });
   }
 });
 
-router.get("/ventas", async (req, res) => {
-  const { page = 1, limit = 10 } = req.query;
-  const offset = (page - 1) * limit;
 
+// GET /ventas - Obtener todas las ventas con paginación
+router.get('/ventas', async (req, res) => {
   try {
-    const query = `
-      SELECT 
-        v.idVentas, v.codigo_venta, v.fecha_venta, v.tipo_factura, v.metodo_pago, v.total,
-        v.descripcion_compra, v.empleado_id, CONCAT(e.nombres, ' ', e.apellidos) AS empleado_nombre,
-        c.nombre AS cliente_nombre, c.direccion AS direccion_cliente, c.dui, c.nit, c.tipo_cliente,
-        c.registro_contribuyente, c.representante_legal, c.direccion_representante, c.razon_social,
-        c.email, c.telefono, c.fecha_inicio, c.fecha_fin, c.porcentaje_retencion,
-        v.factura, v.comprobante_credito_fiscal, v.factura_exportacion, v.nota_credito, v.nota_debito,
-        v.nota_remision, v.comprobante_liquidacion, v.comprobante_retencion, v.documento_contable_liquidacion,
-        v.comprobante_donacion, v.factura_sujeto_excluido, v.descuento,
-        v.sucursal_id, s.nombre AS sucursal_nombre,
-        JSON_ARRAYAGG(
-          JSON_OBJECT(
-            'codigo', dv.codigo_producto, 
-            'nombre', i.nombre, 
-            'cantidad', dv.cantidad,
-            'precio', dv.precio_unitario, 
-            'costo', i.costo, 
-            'numero_chasis', i.numero_chasis,
-            'numero_motor', i.numero_motor, 
-            'descripcion', i.descripcion,
-            'categoria', cat.nombre, 
-            'sucursal', suc.nombre, 
-            'proveedor', prov.nombre_comercial
-          )
-        ) AS productos
+    const { page = 1, limit = 10, apertura_id } = req.query;
+    const offset = (page - 1) * limit;
+
+    let query = `
+      SELECT v.idVentas, v.codigo_venta, v.cliente_id, v.empleado_id, v.tipo_dte, v.metodo_pago, 
+             v.total, v.descripcion_compra, v.descuento, v.apertura_id, v.sucursal_id,
+             c.nombre AS cliente_nombre, c.direccion AS direccion_cliente, c.dui, c.nit,
+             CONCAT(e.nombres, ' ', e.apellidos) AS empleado_nombre,
+             s.nombre AS sucursal_nombre,
+             v.fecha_venta AS fecha_venta,
+             JSON_ARRAYAGG(
+               JSON_OBJECT(
+                 'id', dv.idDetalle, 'codigo', dv.codigo_producto, 'nombre', dv.nombre, 
+                 'cantidad', dv.cantidad, 'precio', dv.precio_unitario, 'subtotal', dv.subtotal
+               )
+             ) AS productos
       FROM ventas v
       LEFT JOIN clientes c ON v.cliente_id = c.idCliente
       LEFT JOIN empleados e ON v.empleado_id = e.id
-      LEFT JOIN sucursal s ON v.sucursal_id = s.id  -- Corregido: JOIN con v.sucursal_id
+      LEFT JOIN sucursal s ON v.sucursal_id = s.id
       LEFT JOIN detalle_ventas dv ON v.idVentas = dv.idVentas
-      LEFT JOIN inventario i ON dv.codigo_producto = i.codigo
-      LEFT JOIN categoria cat ON i.categoria_id = cat.id
-      LEFT JOIN sucursal suc ON i.sucursal_id = suc.id
-      LEFT JOIN proveedores prov ON i.proveedor_id = prov.id
-      GROUP BY 
-        v.idVentas, v.codigo_venta, v.fecha_venta, v.tipo_factura, v.metodo_pago, v.total,
-        v.descripcion_compra, v.empleado_id, e.nombres, e.apellidos,
-        c.nombre, c.direccion, c.dui, c.nit, c.tipo_cliente,
-        c.registro_contribuyente, c.representante_legal, c.direccion_representante, c.razon_social,
-        c.email, c.telefono, c.fecha_inicio, c.fecha_fin, c.porcentaje_retencion,
-        v.factura, v.comprobante_credito_fiscal, v.factura_exportacion, v.nota_credito, v.nota_debito,
-        v.nota_remision, v.comprobante_liquidacion, v.comprobante_retencion, v.documento_contable_liquidacion,
-        v.comprobante_donacion, v.factura_sujeto_excluido, v.descuento,
-        v.sucursal_id, s.nombre
+    `;
+    let countQuery = 'SELECT COUNT(*) as total FROM ventas v';
+    let params = [];
+
+    if (apertura_id) {
+      query += ' WHERE v.apertura_id = ?';
+      countQuery += ' WHERE v.apertura_id = ?';
+      params.push(apertura_id);
+    }
+
+    query += `
+      GROUP BY v.idVentas, v.codigo_venta, v.cliente_id, v.empleado_id, v.tipo_dte, v.metodo_pago, 
+               v.total, v.descripcion_compra, v.descuento, v.apertura_id, v.sucursal_id,
+               c.nombre, c.direccion, c.dui, c.nit, e.nombres, e.apellidos, s.nombre,
+               v.fecha_venta
       ORDER BY v.fecha_venta DESC
       LIMIT ? OFFSET ?
     `;
-    const [rows] = await req.db.query(query, [parseInt(limit), parseInt(offset)]);
-    const [totalResult] = await req.db.query('SELECT COUNT(*) AS total FROM ventas');
-    const total = totalResult[0].total;
+    params.push(parseInt(limit), parseInt(offset));
 
-    res.json({ ventas: rows, total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / limit) });
+    const [ventas] = await req.db.query(query, params);
+    const [countResult] = await req.db.query(countQuery, apertura_id ? [apertura_id] : []);
+    const total = countResult[0].total;
+
+    res.json({ ventas, total });
   } catch (err) {
-    console.error("Error al obtener ventas:", err);
-    res.status(500).json({ error: err.message });
+    console.error('Error al obtener ventas:', err);
+    res.status(500).json({ message: 'Error al obtener ventas', error: err.message });
   }
 });
 
-router.put("/ventas/:id", async (req, res) => {
+// PUT /ventas/:id - Actualizar una venta
+router.put('/ventas/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { tipo_factura, metodo_pago, descripcion_compra } = req.body; // Solo aceptamos estos campos
+    const { metodo_pago, descripcion_compra } = req.body;
 
-    const [ventaActual] = await req.db.query("SELECT * FROM ventas WHERE idVentas = ?", [id]);
-    if (ventaActual.length === 0) return res.status(404).json({ message: "Venta no encontrada" });
+    const [ventaActual] = await req.db.query('SELECT * FROM ventas WHERE idVentas = ?', [id]);
+    if (ventaActual.length === 0) return res.status(404).json({ message: 'Venta no encontrada' });
 
-    // Actualizamos solo los campos permitidos
-    await req.db.query(
-      `UPDATE ventas SET 
-         tipo_factura = ?, metodo_pago = ?, descripcion_compra = ?
-       WHERE idVentas = ?`,
-      [
-        tipo_factura || ventaActual[0].tipo_factura,
-        metodo_pago || ventaActual[0].metodo_pago,
-        descripcion_compra || ventaActual[0].descripcion_compra,
-        id
-      ]
-    );
-
-    // Guardamos historial con los datos nuevos limitados
-    const datosNuevos = {
-      tipo_factura: tipo_factura || ventaActual[0].tipo_factura,
+    const datosActualizados = {
       metodo_pago: metodo_pago || ventaActual[0].metodo_pago,
-      descripcion_compra: descripcion_compra || ventaActual[0].descripcion_compra,
+      descripcion_compra: descripcion_compra || ventaActual[0].descripcion_compra
     };
 
     await req.db.query(
-      `INSERT INTO historial_cambios_ventas (venta_id, codigo_venta, datos_anteriores, datos_nuevos)
-       VALUES (?, ?, ?, ?)`,
-      [id, ventaActual[0].codigo_venta, JSON.stringify(ventaActual[0]), JSON.stringify(datosNuevos)]
+      `UPDATE ventas SET 
+         metodo_pago = ?, descripcion_compra = ?
+       WHERE idVentas = ?`,
+      [datosActualizados.metodo_pago, datosActualizados.descripcion_compra, id]
     );
 
-    res.json({ message: "Venta actualizada correctamente" });
+    const datosNuevos = { ...datosActualizados };
+    await req.db.query(
+      `INSERT INTO historial_cambios_ventas (venta_id, datos_anteriores, datos_nuevos)
+       VALUES (?, ?, ?)`,
+      [id, JSON.stringify(ventaActual[0]), JSON.stringify(datosNuevos)]
+    );
+
+    res.json({ message: 'Venta actualizada correctamente' });
   } catch (err) {
-    console.error("Error al actualizar:", err);
-    res.status(500).json({ message: "Error al actualizar", error: err.message });
+    console.error('Error al actualizar venta:', err);
+    res.status(500).json({ message: 'Error al actualizar venta', error: err.message });
   }
 });
 
-router.get("/ventas/:id/historial", async (req, res) => {
+// GET /ventas/:id/historial - Obtener historial de cambios
+router.get('/ventas/:id/historial', async (req, res) => {
   try {
     const { id } = req.params;
     const [historial] = await req.db.query(
-      `SELECT id, venta_id, codigo_venta, fecha_cambio, datos_anteriores, datos_nuevos
-       FROM historial_cambios_ventas WHERE venta_id = ? ORDER BY fecha_cambio DESC`,
+      'SELECT * FROM historial_cambios_ventas WHERE venta_id = ? ORDER BY fecha_cambio DESC',
       [id]
     );
     res.json(historial);
   } catch (err) {
-    console.error("Error al obtener historial:", err);
-    res.status(500).json({ message: "Error al obtener historial", error: err.message });
+    console.error('Error al obtener historial:', err);
+    res.status(500).json({ message: 'Error al obtener historial', error: err.message });
   }
 });
 
-router.delete("/ventas/:id", async (req, res) => {
+// DELETE /ventas/:id - Eliminar una venta
+router.delete('/ventas/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await req.db.query("DELETE FROM detalle_ventas WHERE idVentas = ?", [id]);
-    const [result] = await req.db.query("DELETE FROM ventas WHERE idVentas = ?", [id]);
-    if (result.affectedRows === 0) return res.status(404).json({ message: "Venta no encontrada" });
-    res.json({ message: "Venta eliminada correctamente" });
+
+    const [venta] = await req.db.query('SELECT * FROM ventas WHERE idVentas = ?', [id]);
+    if (venta.length === 0) return res.status(404).json({ message: 'Venta no encontrada' });
+
+    const [detalles] = await req.db.query('SELECT * FROM detalle_ventas WHERE idVentas = ?', [id]);
+    for (const detalle of detalles) {
+      await req.db.query(
+        'UPDATE inventario SET stock_existencia = stock_existencia + ? WHERE codigo = ?',
+        [detalle.cantidad, detalle.codigo_producto]
+      );
+    }
+
+    await req.db.query('DELETE FROM detalle_ventas WHERE idVentas = ?', [id]);
+    await req.db.query('DELETE FROM ventas WHERE idVentas = ?', [id]);
+
+    res.json({ message: 'Venta eliminada correctamente' });
   } catch (err) {
-    console.error("Error al eliminar la venta:", err);
-    res.status(500).json({ message: "Error al eliminar la venta", error: err.message });
+    console.error('Error al eliminar venta:', err);
+    res.status(500).json({ message: 'Error al eliminar venta', error: err.message });
   }
 });
 
@@ -305,7 +282,7 @@ router.get("/clientes", async (req, res) => {
     const params = [];
     if (q) {
       query += " AND (nombre LIKE ? OR nit LIKE ? OR dui LIKE ?)";
-      params.push(`%${q}%`, `%${q}%`, `%${q}%`); // Búsqueda más amplia
+      params.push(`%${q}%`, `%${q}%`, `%${q}%`);
     }
     query += " ORDER BY idCliente DESC LIMIT ? OFFSET ?";
     params.push(parseInt(limit), parseInt(offset));
@@ -325,44 +302,28 @@ router.get("/clientes", async (req, res) => {
 router.post("/clientes", async (req, res) => {
   try {
     const {
-      nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente,
+      nombre, direccion, departamento, dui, nit, tipo_cliente, registro_contribuyente,
       representante_legal, direccion_representante, razon_social, email,
-      telefono, fecha_inicio, fecha_fin, porcentaje_retencion,
+      telefono, fecha_inicio,
     } = req.body;
 
-    // Validaciones obligatorias generales
-    if (!nombre || !direccion || !nit || !registro_contribuyente || !email || !telefono) {
-      return res.status(400).json({ message: "Todos los campos generales son requeridos" });
-    }
-
-    // Validaciones por tipo de cliente
-    if ((tipo_cliente === 'Natural' || tipo_cliente === 'Consumidor Final') && !dui) {
-      return res.status(400).json({ message: "DUI es requerido para Natural y Consumidor Final" });
-    }
-    if (tipo_cliente === 'Contribuyente Jurídico' && (!representante_legal || !direccion_representante)) {
-      return res.status(400).json({ message: "Representante Legal y Dirección son requeridos" });
-    }
-    if (tipo_cliente === 'ONG' && !razon_social) {
-      return res.status(400).json({ message: "Razón Social es requerida para ONG" });
-    }
-
-    let finalPorcentajeRetencion = porcentaje_retencion;
-    if (tipo_cliente === 'Sujeto Excluido') {
-      finalPorcentajeRetencion = 10.0;
+    if (!nombre) {
+      return res.status(400).json({ message: "El campo nombre es requerido" });
     }
 
     const codigoCliente = await generateCode(req.db, 'CGR', 'clientes', 'codigo_cliente');
 
     const [result] = await req.db.query(
       `INSERT INTO clientes (
-        codigo_cliente, nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente, 
-        representante_legal, direccion_representante, razon_social, email, telefono, 
-        fecha_inicio, fecha_fin, porcentaje_retencion
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        codigo_cliente, nombre, direccion, departamento, dui, nit, tipo_cliente, 
+        registro_contribuyente, representante_legal, direccion_representante, 
+        razon_social, email, telefono, fecha_inicio
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        codigoCliente, nombre, direccion, dui, nit, tipo_cliente, registro_contribuyente,
-        representante_legal, direccion_representante, razon_social, email, telefono,
-        fecha_inicio, fecha_fin, finalPorcentajeRetencion
+        codigoCliente, nombre, direccion || null, departamento || null, dui || null, nit || null, 
+        tipo_cliente || 'Cliente de Paso', registro_contribuyente || null, representante_legal || null, 
+        direccion_representante || null, razon_social || null, email || null, telefono || null, 
+        fecha_inicio || new Date().toISOString().split('T')[0]
       ]
     );
 
@@ -370,6 +331,9 @@ router.post("/clientes", async (req, res) => {
       message: "Cliente agregado correctamente",
       idCliente: result.insertId,
       codigo_cliente: codigoCliente,
+      nombre: nombre, // Agregar nombre
+      tipo_cliente: tipo_cliente || 'Cliente de Paso', // Agregar tipo_cliente
+      fecha_inicio: fecha_inicio || new Date().toISOString().split('T')[0], // Agregar fecha_inicio
     });
   } catch (err) {
     console.error("Error al agregar cliente:", err);
@@ -380,30 +344,46 @@ router.post("/clientes", async (req, res) => {
 router.put("/clientes/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { direccion, email, telefono } = req.body;
+    const { 
+      nombre, direccion, departamento, dui, nit, registro_contribuyente,
+      representante_legal, direccion_representante, razon_social, email,
+      telefono, fecha_inicio
+    } = req.body;
 
     const [clienteActual] = await req.db.query("SELECT * FROM clientes WHERE idCliente = ?", [id]);
     if (clienteActual.length === 0) return res.status(404).json({ message: "Cliente no encontrado" });
 
     const datosActualizados = {
+      nombre: nombre || clienteActual[0].nombre,
       direccion: direccion || clienteActual[0].direccion,
+      departamento: departamento || clienteActual[0].departamento,
+      dui: dui || clienteActual[0].dui,
+      nit: nit || clienteActual[0].nit,
+      registro_contribuyente: registro_contribuyente || clienteActual[0].registro_contribuyente,
+      representante_legal: representante_legal || clienteActual[0].representante_legal,
+      direccion_representante: direccion_representante || clienteActual[0].direccion_representante,
+      razon_social: razon_social || clienteActual[0].razon_social,
       email: email || clienteActual[0].email,
       telefono: telefono || clienteActual[0].telefono,
+      fecha_inicio: fecha_inicio || clienteActual[0].fecha_inicio,
     };
 
     await req.db.query(
       `UPDATE clientes SET 
-         direccion = ?, email = ?, telefono = ?
+         nombre = ?, direccion = ?, departamento = ?, dui = ?, nit = ?, 
+         registro_contribuyente = ?, representante_legal = ?, direccion_representante = ?, 
+         razon_social = ?, email = ?, telefono = ?, fecha_inicio = ?
        WHERE idCliente = ?`,
-      [datosActualizados.direccion, datosActualizados.email, datosActualizados.telefono, id]
+      [
+        datosActualizados.nombre, datosActualizados.direccion, datosActualizados.departamento,
+        datosActualizados.dui, datosActualizados.nit, datosActualizados.registro_contribuyente,
+        datosActualizados.representante_legal, datosActualizados.direccion_representante,
+        datosActualizados.razon_social, datosActualizados.email, datosActualizados.telefono,
+        datosActualizados.fecha_inicio, id
+      ]
     );
 
-    const datosNuevos = {
-      direccion: datosActualizados.direccion,
-      email: datosActualizados.email,
-      telefono: datosActualizados.telefono,
-    };
-
+    const datosNuevos = { ...datosActualizados };
     await req.db.query(
       `INSERT INTO historial_cambios_clientes (cliente_id, datos_anteriores, datos_nuevos)
        VALUES (?, ?, ?)`,
@@ -444,6 +424,23 @@ router.delete("/clientes/:id", async (req, res) => {
   }
 });
 
+// POST /clientes/paso - Agregar Cliente de Paso
+router.post('/clientes/paso', async (req, res) => {
+  try {
+    const { nombre, fecha_inicio } = req.body;
+    if (!nombre) return res.status(400).json({ message: 'El nombre es requerido' });
+
+    const [result] = await req.db.query(
+      'INSERT INTO clientes (nombre, tipo_cliente, fecha_inicio) VALUES (?, "Cliente de Paso", ?)',
+      [nombre, fecha_inicio || new Date().toISOString().split('T')[0]] // Fecha actual por defecto
+    );
+    res.status(201).json({ idCliente: result.insertId, nombre, fecha_inicio: fecha_inicio || new Date().toISOString().split('T')[0] });
+  } catch (err) {
+    console.error('Error al agregar cliente de paso:', err);
+    res.status(500).json({ message: 'Error al agregar cliente de paso', error: err.message });
+  }
+});
+
 // ------------------ TRASLADOS ------------------
 
 // Ajustar GET /traslados para incluir detalles
@@ -461,7 +458,10 @@ router.get("/traslados", async (req, res) => {
           JSON_OBJECT(
             'codigo_inventario', dt.codigo_inventario,
             'cantidad', dt.cantidad,
-            'producto_nombre', i.nombre
+            'producto_nombre', i.nombre,
+            'numero_motor', i.numero_motor,
+            'numero_chasis', i.numero_chasis,
+            'descripcion', i.descripcion
           )
         ) AS productos
       FROM traslados t
@@ -475,15 +475,14 @@ router.get("/traslados", async (req, res) => {
     const params = [];
 
     if (search) {
-      query += " AND (t.codigo_traslado LIKE ? OR i.nombre LIKE ?)";
-      params.push(`%${search}%`, `%${search}%`);
+      query += " AND (t.codigo_traslado LIKE ? OR i.nombre LIKE ? OR i.numero_motor LIKE ? OR i.numero_chasis LIKE ?)";
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (codigo_sucursal_origen) {
       query += " AND t.codigo_sucursal_origen = ?";
       params.push(codigo_sucursal_origen);
     }
 
-    // Ajustamos el GROUP BY para incluir todas las columnas no agregadas
     query += `
       GROUP BY t.id, t.codigo_traslado, t.fecha_traslado, t.estado,
                s1.codigo, s1.nombre, s2.codigo, s2.nombre,
@@ -499,10 +498,10 @@ router.get("/traslados", async (req, res) => {
       'LEFT JOIN detalle_traslados dt ON t.id = dt.traslado_id ' +
       'LEFT JOIN inventario i ON dt.codigo_inventario = i.codigo ' +
       'WHERE 1=1' +
-      (search ? " AND (t.codigo_traslado LIKE ? OR i.nombre LIKE ?)" : "") +
+      (search ? " AND (t.codigo_traslado LIKE ? OR i.nombre LIKE ? OR i.numero_motor LIKE ? OR i.numero_chasis LIKE ?)" : "") +
       (codigo_sucursal_origen ? " AND t.codigo_sucursal_origen = ?" : ""),
-      search && codigo_sucursal_origen ? [`%${search}%`, `%${search}%`, codigo_sucursal_origen] :
-      search ? [`%${search}%`, `%${search}%`] : codigo_sucursal_origen ? [codigo_sucursal_origen] : []
+      search && codigo_sucursal_origen ? [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, codigo_sucursal_origen] :
+      search ? [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`] : codigo_sucursal_origen ? [codigo_sucursal_origen] : []
     );
     const total = totalResult[0].total;
 
@@ -673,7 +672,6 @@ router.delete("/traslados/:id", async (req, res) => {
 // ------------------ OFERTAS ------------------
 
 router.get("/ofertas", async (req, res) => {
-  
   try {
     const { categoria_id, nombre, estado, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
@@ -682,7 +680,7 @@ router.get("/ofertas", async (req, res) => {
         o.id, o.inventario_id, o.descuento, o.fecha_inicio, o.fecha_fin, o.codigo_oferta,
         i.codigo AS codigo, i.nombre AS producto_nombre, i.precio_venta,
         i.precio_venta * (1 - o.descuento / 100) AS precio_con_descuento,
-        i.categoria_id,
+        i.categoria AS categoria,  -- Cambiado de i.categoria_id a i.categoria
         CASE 
           WHEN o.fecha_fin < NOW() THEN 'Inactiva'
           WHEN o.fecha_inicio <= NOW() AND o.fecha_fin >= NOW() THEN 'Activa'
@@ -694,9 +692,10 @@ router.get("/ofertas", async (req, res) => {
     `;
     const params = [];
 
+    // Ajustar el filtro por categoría
     if (categoria_id) {
-      query += " AND i.categoria_id = ?";
-      params.push(categoria_id);
+      query += " AND i.categoria = ?";  // Cambiado de i.categoria_id a i.categoria
+      params.push(categoria_id);  // Ahora espera un valor de texto (nombre de categoría)
     }
     if (nombre) {
       query += " AND i.nombre LIKE ?";
@@ -711,12 +710,13 @@ router.get("/ofertas", async (req, res) => {
     params.push(parseInt(limit), parseInt(offset));
 
     const [rows] = await req.db.query(query, params);
-    const [totalResult] = await req.db.query('SELECT COUNT(*) AS total FROM ofertas o INNER JOIN inventario i ON o.inventario_id = i.id WHERE 1=1' + 
-      (categoria_id ? " AND i.categoria_id = ?" : "") + (nombre ? " AND i.nombre LIKE ?" : ""), 
-      categoria_id && nombre ? [categoria_id, `%${nombre}%`] : categoria_id ? [categoria_id] : nombre ? [`%${nombre}%`] : []);
+    const [totalResult] = await req.db.query(
+      'SELECT COUNT(*) AS total FROM ofertas o INNER JOIN inventario i ON o.inventario_id = i.id WHERE 1=1' + 
+      (categoria_id ? " AND i.categoria = ?" : "") +  // Ajustado aquí también
+      (nombre ? " AND i.nombre LIKE ?" : ""), 
+      categoria_id && nombre ? [categoria_id, `%${nombre}%`] : categoria_id ? [categoria_id] : nombre ? [`%${nombre}%`] : []
+    );
     const total = totalResult[0].total;
-
-    
 
     res.json({ ofertas: rows, total });
   } catch (err) {
@@ -949,24 +949,23 @@ router.get("/categorias", async (req, res) => {
 
 router.get("/buscar-inventario", async (req, res) => {
   try {
-    const { categoria_id, nombre } = req.query;
+    const { categoria_id, nombre } = req.query;  // categoria_id ahora es el nombre de la categoría
     let query = "SELECT id, codigo, nombre, precio_venta, stock_existencia FROM inventario WHERE 1=1";
     const params = [];
 
     if (categoria_id) {
-      query += " AND categoria_id = ?";
-      params.push(categoria_id);
+      query += " AND categoria = ?";  // Cambiado de categoria_id a categoria
+      params.push(categoria_id);  // Ahora es texto
     }
     if (nombre) {
       query += " AND (nombre LIKE ? OR codigo LIKE ?)";
-      params.push(`%${nombre}%`, `%${nombre}%`); // Busca en nombre o código
+      params.push(`%${nombre}%`, `%${nombre}%`);
     }
 
     const [rows] = await req.db.query(query, params);
-    console.log("Productos devueltos:", rows); // Log para depurar
+    console.log("Productos devueltos:", rows);
     res.status(200).json(rows);
   } catch (err) {
-    
     console.error("Error al buscar inventario:", err);
     res.status(500).json({ error: err.message });
   }

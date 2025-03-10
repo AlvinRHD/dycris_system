@@ -23,6 +23,93 @@ const upload = multer({ storage });
 
 /* ==================== RUTAS DE INVENTARIO ==================== */
 
+// POST: Insertar un nuevo producto en inventario o actualizar existente
+router.post("/inventario", async (req, res) => {
+  try {
+    // Imprimir los datos que llegan en la solicitud
+    console.log(req.body);
+
+    const {
+      comprobante,
+      fecha_ingreso,
+      codigo_producto,
+      producto,
+      cantidad,
+      comentario,
+      proveedor,
+      costo_unit,
+      costo_total,
+      retencion,
+      sucursal,
+      codigo,
+      nombre,
+      categoria,
+      marca,
+      descripcion,
+      stock_existencia,
+      precio_venta,
+      numero_motor,
+      numero_chasis,
+      color,
+      poliza,
+    } = req.body;
+
+    // Validar campos obligatorios
+    if (!codigo || !nombre || !categoria || !sucursal || !proveedor || !poliza) {
+      return res.status(400).json({
+        message: "Campos obligatorios faltantes: código, nombre, categoría, sucursal, proveedor o póliza.",
+      });
+    }
+
+    // Verificar si el producto ya existe en la misma sucursal
+    const [existingProduct] = await req.db.query(
+      "SELECT * FROM inventario WHERE codigo = ? AND sucursal = ?",
+      [codigo, sucursal]
+    );
+
+    if (existingProduct.length > 0) {
+      // Si el producto existe en la misma sucursal, actualizar stock y precio
+      const newStock = existingProduct[0].stock_existencia + parseInt(cantidad);
+      const newPrecioVenta = precio_venta || existingProduct[0].precio_venta;
+
+      await req.db.query(
+        "UPDATE inventario SET stock_existencia = ?, precio_venta = ? WHERE id = ?",
+        [newStock, newPrecioVenta, existingProduct[0].id]
+      );
+
+      // Registrar la entrada en la tabla `entradas`
+      await req.db.query(
+        "INSERT INTO entradas (comprobante, fecha_ingreso, codigo_producto, producto, cantidad, comentario, proveedor, costo_unit, costo_total, retencion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [comprobante, fecha_ingreso, codigo, nombre, cantidad, comentario, proveedor, costo_unit, costo_total, retencion]
+      );
+
+      return res.status(200).json({
+        message: "Producto actualizado exitosamente",
+        id: existingProduct[0].id,
+      });
+    } else {
+      // Si el producto no existe en la sucursal, insertar un nuevo registro
+      const [result] = await req.db.query(
+        "INSERT INTO inventario (sucursal, codigo, nombre, categoria, marca, descripcion, stock_existencia, precio_venta, numero_motor, numero_chasis, color, poliza) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [sucursal, codigo, nombre, categoria, marca, descripcion, stock_existencia, precio_venta, numero_motor, numero_chasis, color, poliza]
+      );
+
+      // Registrar la entrada en la tabla `entradas`
+      await req.db.query(
+        "INSERT INTO entradas (comprobante, fecha_ingreso, codigo_producto, producto, cantidad, comentario, proveedor, costo_unit, costo_total, retencion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [comprobante, fecha_ingreso, codigo, nombre, cantidad, comentario, proveedor, costo_unit, costo_total, retencion]
+      );
+
+      return res.status(201).json({
+        message: "Producto insertado exitosamente",
+        id: result.insertId,
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ message: "Error interno del servidor", error: err.message });
+  }
+});
+
 // GET: Obtener inventario (resumido o detallado)
 router.get("/inventario", async (req, res) => {
   try {
@@ -32,46 +119,33 @@ router.get("/inventario", async (req, res) => {
     if (tipo === "detallado") {
       query = `
         SELECT 
-          i.id,
-          i.codigo,
-          i.imagen,
-          i.nombre AS nombre,
-          i.descripcion AS descripcion,
-          i.numero_motor,
-          i.numero_chasis,
-          c.nombre AS categoria,
-          s.nombre AS sucursal,
-          p.nombre_comercial AS proveedores,
-          i.costo,
-          i.credito,
-          i.precio_venta,
-          i.stock_existencia,
-          i.stock_minimo,
-          i.fecha_ingreso,
-          i.fecha_reingreso,
-          i.numero_poliza,
-          i.numero_lote
-        FROM inventario i
-        LEFT JOIN categoria c ON i.categoria_id = c.id
-        LEFT JOIN sucursal s ON i.sucursal_id = s.id
-        LEFT JOIN proveedores p ON i.proveedor_id = p.id;
+          id,
+          codigo,
+          nombre AS nombre,
+          descripcion AS descripcion,
+          numero_motor,
+          numero_chasis,
+          categoria,
+          sucursal,
+          marca,
+          color,
+          poliza,
+          precio_venta,
+          stock_existencia
+        FROM inventario;
       `;
     } else if (tipo === "resumido") {
       query = `
         SELECT 
-          i.nombre AS nombre,
-          i.descripcion AS descripcion,
-          i.costo,
-          i.precio_venta,
-          c.nombre AS categoria,
-          s.nombre AS sucursal,
-          p.nombre_comercial AS proveedores,
-          SUM(i.stock_existencia) AS stock_total
-        FROM inventario i
-        LEFT JOIN categoria c ON i.categoria_id = c.id
-        LEFT JOIN sucursal s ON i.sucursal_id = s.id
-        LEFT JOIN proveedores p ON i.proveedor_id = p.id
-        GROUP BY i.nombre, i.descripcion, c.nombre, s.nombre, p.nombre_comercial, i.costo, i.precio_venta;
+          nombre AS nombre,
+          descripcion AS descripcion,
+          marca,
+          categoria,
+          sucursal,
+          SUM(stock_existencia) AS stock_total,
+          AVG(precio_venta) AS precio_promedio
+        FROM inventario
+        GROUP BY nombre, descripcion, marca, categoria, sucursal, precio_venta;
       `;
     }
 
@@ -84,8 +158,6 @@ router.get("/inventario", async (req, res) => {
     });
   }
 });
-
-
 
 // GET: Obtener detalles de un producto por nombre y descripción
 router.get("/inventario/detalles", async (req, res) => {
@@ -101,12 +173,15 @@ router.get("/inventario/detalles", async (req, res) => {
         codigo,
         numero_motor, 
         numero_chasis,
-        numero_poliza,
-        numero_lote,
-        imagen,
+        poliza,
         nombre,
         descripcion,
-        stock_existencia
+        stock_existencia,
+        precio_venta,
+        color,
+        marca,
+        categoria,
+        sucursal
       FROM inventario 
       WHERE nombre = ? AND descripcion = ?
     `;
@@ -120,43 +195,43 @@ router.get("/inventario/detalles", async (req, res) => {
       error: err.message,
     });
   }
-}) 
+});
 
-// PUT: Actualizar productos por nombre y descripción e insertar en historial
-router.put("/inventario/edit", async (req, res) => {
-  const { nombre, descripcion, precio_venta,  motivo, imagen } = req.body;
+// PUT: Actualizar productos por ID
+router.put("/inventario/edit/:id", async (req, res) => {
+  const { id } = req.params;
+  const { nombre, descripcion, marca,  precio_venta, motivo } = req.body;
   const connection = await req.db.getConnection();
   try {
     await connection.beginTransaction();
     
-    // Verificar si existen productos con el mismo nombre y descripción
-    const [rows] = await connection.query("SELECT * FROM inventario WHERE nombre = ? AND descripcion = ?", [nombre, descripcion]);
+    // Verificar si existe el producto por ID
+    const [rows] = await connection.query("SELECT * FROM inventario WHERE id = ?", [id]);
     if (rows.length === 0) {
       await connection.rollback();
-      return res.status(404).json({ message: "No se encontraron productos con el nombre y descripción proporcionados" });
+      return res.status(404).json({ message: "Producto no encontrado" });
     }
 
-    // Actualizar todos los productos que coinciden
-    const codigo = rows[0].codigo; // Suponiendo que todos los productos tienen el mismo código
+    // Actualizar el producto
     await connection.query(
       `UPDATE inventario SET 
-        precio_venta = ?, 
-        imagen = ? 
-      WHERE nombre = ? AND descripcion = ?`,
-      [precio_venta,  imagen, nombre, descripcion]
+        nombre = ?, 
+        descripcion = ?, 
+        marca = ?,  
+        precio_venta = ? 
+      WHERE id = ?`,
+      [nombre, descripcion, marca, precio_venta, id]
     );
 
-    // Insertar registro en historial para cada producto actualizado
-    for (const row of rows) {
-      await connection.query(
-        `INSERT INTO historial_ajustes (codigo, nombre, descripcion, precio, motivo) 
-         VALUES (?, ?, ?, ?, ?)`,
-        [row.codigo, nombre, descripcion, precio_venta,  motivo]
-      );
-    }
+    // Insertar registro en historial
+    await connection.query(
+      `INSERT INTO historial_ajustes (codigo, nombre, descripcion, precio, motivo) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [rows[0].codigo, nombre, descripcion, precio_venta, motivo]
+    );
 
     await connection.commit();
-    res.json({ message: "Productos y historial actualizados correctamente" });
+    res.json({ message: "Producto y historial actualizados correctamente" });
   } catch (err) {
     await connection.rollback();
     res.status(500).json({
@@ -168,90 +243,6 @@ router.put("/inventario/edit", async (req, res) => {
   }
 });
 
-
-
-// POST: Insertar un nuevo producto en inventario
-router.post("/inventario", async (req, res) => {
-  try {
-    const {
-      codigo,
-      imagen, // Este campo es opcional
-      nombre,
-      descripcion,
-      numero_motor,
-      numero_chasis,
-      costo,
-      credito,
-      precio_venta,
-      stock_existencia,
-      stock_minimo,
-      fecha_ingreso,
-      fecha_reingreso,
-      numero_poliza,
-      numero_lote,
-      categoria_id,
-      sucursal_id,
-      proveedor_id,
-    } = req.body;
-
-    // Validar campos obligatorios
-    if (!codigo || !nombre || !categoria_id || !sucursal_id || !proveedor_id) {
-      return res.status(400).json({
-        message: "Campos obligatorios faltantes: código, nombre, categoría, sucursal o proveedor.",
-      });
-    }
-
-    // Verificar que no exista un producto con el mismo código o número de motor
-    const [existingProduct] = await req.db.query(
-      "SELECT * FROM inventario WHERE codigo = ? OR numero_motor = ?",
-      [codigo, numero_motor]
-    );
-    if (existingProduct.length > 0) {
-      return res.status(409).json({
-        message: "El producto con ese código o número de motor ya existe.",
-      });
-    }
-
-    // Construir la consulta de inserción
-    const query = `
-      INSERT INTO inventario 
-      (codigo, ${imagen ? 'imagen,' : ''} nombre, descripcion, numero_motor, numero_chasis, costo, credito, 
-      precio_venta, stock_existencia, stock_minimo, fecha_ingreso, fecha_reingreso, 
-      numero_poliza, numero_lote, categoria_id, sucursal_id, proveedor_id) 
-      VALUES (?, ${imagen ? '?, ' : ''} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-    // Crear un array de valores a insertar
-    const values = [
-      codigo,
-      ...(imagen ? [imagen] : []), // Agregar imagen solo si está presente
-      nombre,
-      descripcion,
-      numero_motor,
-      numero_chasis,
-      costo,
-      credito,
-      precio_venta,
-      stock_existencia,
-      stock_minimo,
-      fecha_ingreso,
-      fecha_reingreso,
-      numero_poliza,
-      numero_lote,
-      categoria_id,
-      sucursal_id,
-      proveedor_id,
-    ];
-
-    const [result] = await req.db.query(query, values);
-
-    res.status(201).json({
-      message: "Producto insertado exitosamente",
-      id: result.insertId,
-    });
-  } catch (err) {
-    res.status(500).json({ message: "Error interno del servidor", error: err.message });
-  }
-});
 
 // DELETE: Eliminar producto por ID
 router.delete("/inventario/:id", async (req, res) => {
@@ -267,14 +258,77 @@ router.delete("/inventario/:id", async (req, res) => {
   }
 });
 
-// POST: Endpoint para cargar imágenes
-router.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).send("No se ha cargado ninguna imagen");
-  }
-  res.status(200).json({
-    imageUrl: `/uploads/${req.file.filename}`,
+
+/* ==================== RUTAS DE Ubicacion ==================== */
+
+// GET y POST: Obtener todas las ubicacion y crear una nueva
+router.route("/ubicaciones_productos")
+  .get(async (req, res) => {
+    try {
+      const [results] = await req.db.query("SELECT * FROM ubicaciones_productos");
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ message: "Error al obtener ubicaciones", error: err.message });
+    }
+  })
+  .post(async (req, res) => {
+    try {
+      // Aquí podrías agregar validación de campos si lo requieres
+      const [result] = await req.db.query("INSERT INTO ubicaciones_productos SET ?", [req.body]);
+      res.status(201).json({
+        message: "Ubicacion creada",
+        id: result.insertId,
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Error al crear Ubicacion", error: err.message });
+    }
   });
+
+// GET: Obtener ubicacion por ID
+router.get("/ubicaciones_productos/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [results] = await req.db.query("SELECT * FROM ubicaciones_productos WHERE id = ?", [id]);
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Ubicacion no encontrada" });
+    }
+    res.json(results[0]);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener Ubicacion", error: err.message });
+  }
+});
+
+// PUT: Actualizar Ubicacion por ID
+router.put("/ubicaciones_productos/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {  sucursal_id, ubicacion, descripcion } = req.body;
+    const [rows] = await req.db.query("SELECT * FROM ubicaciones_productos WHERE id = ?", [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Ubicacion no encontrada" });
+    }
+    await req.db.query(
+      "UPDATE ubicaciones_productos SET  sucursal_id = ?, ubicacion = ?, descripcion = ? WHERE id = ?",
+      [ sucursal_id, ubicacion, descripcion, id]
+    );
+    res.json({ message: "Ubicacion actualizada correctamente" });
+  } catch (err) {
+    res.status(500).json({ message: "Error al actualizar la Ubicacion", error: err.message });
+  }
+});
+
+// DELETE: Eliminar Ubicacion por ID
+router.delete("/ubicaciones_productos/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await req.db.query("DELETE FROM ubicaciones_productos WHERE id = ?", [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Ubicacion no encontrada" });
+    }
+    res.json({ message: "PUbicacion eliminada exitosamente" });
+  } catch (err) {
+    res.status(500).json({ message: "Error al eliminar Ubicacion", error: err.message });
+  }
 });
 
 /* ==================== RUTAS DE HISTORIAL ==================== */
@@ -300,6 +354,39 @@ router.get("/historial_ajustes/:id", async (req, res) => {
     res.json(results[0]);
   } catch (err) {
     res.status(500).json({ message: "Error al obtener historial", error: err.message });
+  }
+});
+
+/* ==================== RUTAS DE Ingreso ==================== */
+
+// GET: Obtener todo el historial de ingreso
+router.get("/entradas", async (req, res) => {
+  try {
+    const query = `
+      SELECT e.*, p.nombre_comercial 
+      FROM entradas e
+      LEFT JOIN proveedores p ON e.proveedor = p.id
+    `;
+
+    const [results] = await req.db.query(query);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener las entradas", error: err.message });
+  }
+});
+
+
+// GET: Obtener entradas por ID
+router.get("/entradas/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [results] = await req.db.query("SELECT * FROM entradas WHERE id = ?", [id]);
+    if (results.length === 0) {
+      return res.status(404).json({ message: "entradas no encontrado" });
+    }
+    res.json(results[0]);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener entradas", error: err.message });
   }
 });
 
@@ -346,14 +433,14 @@ router.get("/sucursal/:id", async (req, res) => {
 router.put("/sucursal/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { codigo, nombre, pais, departamento, ciudad, estado } = req.body;
+    const { codigo, nombre, pais, departamento, ciudad, direccion, telefono, gmail, estado } = req.body;
     const [rows] = await req.db.query("SELECT * FROM sucursal WHERE id = ?", [id]);
     if (rows.length === 0) {
       return res.status(404).json({ message: "Sucursal no encontrada" });
     }
     await req.db.query(
-      "UPDATE sucursal SET codigo = ?, nombre = ?, pais = ?, departamento = ?, ciudad = ?, estado = ? WHERE id = ?",
-      [codigo, nombre, pais, departamento, ciudad, estado, id]
+      "UPDATE sucursal SET codigo = ?, nombre = ?, pais = ?, departamento = ?, ciudad = ?, direccion = ?, telefono = ?, gmail = ?, estado = ? WHERE id = ?",
+      [codigo, nombre, pais, departamento, ciudad, direccion, telefono, gmail, estado, id]
     );
     res.json({ message: "Sucursal actualizada correctamente" });
   } catch (err) {
@@ -374,6 +461,7 @@ router.delete("/sucursal/:id", async (req, res) => {
     res.status(500).json({ message: "Error al eliminar sucursal", error: err.message });
   }
 });
+
 
 /* ==================== RUTAS DE CATEGORÍAS ==================== */
 
@@ -448,30 +536,44 @@ router.delete("/categoria/:id", async (req, res) => {
 });
 
 /* ==================== RUTAS DE PROVEEDORES ==================== */
-
-// GET: Obtener todos los proveedores
 // GET: Obtener todos los proveedores
 router.get("/proveedores", async (req, res) => {
   try {
     const query = `
       SELECT 
         p.id,
+        p.tipo_proveedor,
         p.nombre_comercial, 
         p.correo, 
         p.direccion, 
         p.telefono, 
+        p.giro, 
+        p.correspondencia, 
+        p.rubro,
+        -- Datos de proveedores naturales
         pn.nombre_propietario, 
-        pn.dui,
-        pj.razon_social,
-        pj.nit,
-        pj.nrc,
-        pj.giro,
-        pj.correspondencia,
-        p.tipo_proveedor
+        pn.dui, 
+        pn.nrc AS nrc_natural,
+        -- Datos de proveedores jurídicos
+        pj.razon_social, 
+        pj.nit, 
+        pj.nrc AS nrc_juridico, 
+        pj.nombres_representante,
+        pj.apellidos_representante,
+        pj.direccion_representante,
+        pj.telefono_representante,
+        pj.dui_representante,
+        pj.nit_representante,
+        pj.correo_representante,
+        -- Datos de proveedores excluidos
+        pe.nombre_propietario AS nombre_propietario_excluido,
+        pe.dui AS dui_excluido
       FROM proveedores p
       LEFT JOIN proveedores_naturales pn ON p.id = pn.proveedor_id
-      LEFT JOIN proveedores_juridicos pj ON p.id = pj.proveedor_id;
+      LEFT JOIN proveedores_juridicos pj ON p.id = pj.proveedor_id
+      LEFT JOIN proveedores_excluidos pe ON p.id = pe.proveedor_id;
     `;
+
     const [results] = await req.db.query(query);
     res.json(results);
   } catch (err) {
@@ -482,67 +584,98 @@ router.get("/proveedores", async (req, res) => {
   }
 });
 
-// POST: Crear nuevo proveedor
+
+
 router.post("/proveedores", async (req, res) => {
+  // Imprimir el cuerpo de la solicitud para verificar los datos recibidos
+  console.log("Datos recibidos en el cuerpo de la solicitud:", req.body);
+
   const {
     nombre_comercial,
     correo,
     direccion,
     telefono,
-    tipo_proveedor, // 'natural' o 'juridico'
+    tipo_proveedor,
+    rubro,
+    giro,
+    correspondencia,
+    // Datos de proveedores naturales
     nombre_propietario,
     dui,
+    nrc_natural,
+    // Datos de proveedores jurídicos
     razon_social,
     nit,
-    nrc,
-    giro,
-    correspondencia
+    nrc_juridico,
+    nombres_representante,
+    apellidos_representante,
+    direccion_representante,
+    telefono_representante,
+    dui_representante,
+    nit_representante,
+    correo_representante,
+    // Datos de proveedores excluidos
+    nombre_propietario_excluido,
+    dui_excluido,
   } = req.body;
 
-  const connection = await req.db.getConnection(); // Obtener conexión para transacción
+  const connection = await req.db.getConnection();
   try {
-    await connection.beginTransaction(); // Iniciar transacción
+    await connection.beginTransaction();
 
-    // Insertar en la tabla 'proveedores' incluyendo el tipo de proveedor
+    // Insertar en la tabla 'proveedores'
     const [result] = await connection.query(
-      "INSERT INTO proveedores (nombre_comercial, correo, direccion, telefono, tipo_proveedor) VALUES (?, ?, ?, ?, ?)",
-      [nombre_comercial, correo, direccion, telefono, tipo_proveedor]
+      "INSERT INTO proveedores (nombre_comercial, correo, direccion, telefono, tipo_proveedor, rubro, giro, correspondencia) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [nombre_comercial, correo, direccion, telefono, tipo_proveedor, rubro, giro, correspondencia]
     );
 
-    const proveedorId = result.insertId; // Obtener el ID insertado
+    const proveedorId = result.insertId;
+    console.log("Proveedor creado con ID:", proveedorId);
 
     if (tipo_proveedor === "natural") {
-      // Insertar en la tabla 'proveedores_naturales'
+      console.log("Insertando proveedor natural...");
+      // Insertar en 'proveedores_naturales'
       await connection.query(
-        "INSERT INTO proveedores_naturales (proveedor_id, nombre_propietario, dui) VALUES (?, ?, ?)",
-        [proveedorId, nombre_propietario, dui]
+        "INSERT INTO proveedores_naturales (proveedor_id, nombre_propietario, dui, nrc) VALUES (?, ?, ?, ?)",
+        [proveedorId, nombre_propietario, dui, nrc_natural]
       );
+      console.log("Proveedor natural insertado correctamente.");
     } else if (tipo_proveedor === "juridico") {
-      // Insertar en la tabla 'proveedores_juridicos'
+      console.log("Insertando proveedor jurídico...");
+      // Insertar en 'proveedores_juridicos'
       await connection.query(
-        "INSERT INTO proveedores_juridicos (proveedor_id, razon_social, nit, nrc, giro, correspondencia) VALUES (?, ?, ?, ?, ?, ?)",
-        [proveedorId, razon_social, nit, nrc, giro, correspondencia]
+        "INSERT INTO proveedores_juridicos (proveedor_id, razon_social, nit, nrc, nombres_representante, apellidos_representante, direccion_representante, telefono_representante, dui_representante, nit_representante, correo_representante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [proveedorId, razon_social, nit, nrc_juridico, nombres_representante, apellidos_representante, direccion_representante, telefono_representante, dui_representante, nit_representante, correo_representante]
       );
+      console.log("Proveedor jurídico insertado correctamente.");
+    } else if (tipo_proveedor === "sujeto excluido") {
+      console.log("Insertando proveedor excluido...");
+      // Insertar en 'proveedores_excluidos'
+      await connection.query(
+        "INSERT INTO proveedores_excluidos (proveedor_id, nombre_propietario, dui) VALUES (?, ?, ?)",
+        [proveedorId, nombre_propietario_excluido, dui_excluido]
+      );
+      console.log("Proveedor excluido insertado correctamente.");
     } else {
       throw new Error("Tipo de proveedor inválido");
     }
 
-    await connection.commit(); // Confirmar transacción
+    await connection.commit();
+    console.log("Transacción completada exitosamente.");
 
     res.status(201).json({
       message: "Proveedor creado exitosamente",
       id: proveedorId,
     });
   } catch (err) {
-    await connection.rollback(); // Revertir cambios en caso de error
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: err.message });
+    await connection.rollback();
+    console.error("Error en la transacción:", err.message);
+    res.status(500).json({ message: "Error interno del servidor", error: err.message });
   } finally {
-    connection.release(); // Liberar conexión
+    connection.release();
+    console.log("Conexión liberada.");
   }
 });
-
 
 
 // PUT: Actualizar proveedor por ID
@@ -560,19 +693,31 @@ router.put('/proveedores/:id', async (req, res) => {
     nit,
     nrc,
     giro,
-    correspondencia
+    correspondencia,
+    rubro,  // Nuevo campo
+    nrc_juridico, // Nuevo campo para jurídico
+    nombres_representante, 
+    apellidos_representante, 
+    direccion_representante, 
+    telefono_representante, 
+    dui_representante, 
+    nit_representante, 
+    correo_representante,
   } = req.body;
 
   try {
-    // Actualizar datos generales del proveedor (común para ambos tipos)
+    // Actualizar datos generales del proveedor (común para todos los tipos)
     await req.db.query(
       `UPDATE proveedores SET 
         nombre_comercial = ?, 
         direccion = ?, 
         telefono = ?, 
-        correo = ?
+        correo = ?, 
+        giro = ?, 
+        correspondencia = ?, 
+        rubro = ? 
       WHERE id = ?`,
-      [nombre_comercial, direccion, telefono, correo, id]
+      [nombre_comercial, direccion, telefono, correo, giro, correspondencia, rubro, id]
     );
 
     // Verificar el tipo de proveedor y realizar la acción correspondiente
@@ -587,20 +732,21 @@ router.put('/proveedores/:id', async (req, res) => {
         // Si existe, actualizar
         await req.db.query(
           `UPDATE proveedores_naturales SET 
-              nombre_propietario = ?, 
-              dui = ?
-            WHERE proveedor_id = ?`,
-          [nombre_propietario, dui, id]
+            nombre_propietario = ?, 
+            dui = ?, 
+            nrc = ? 
+          WHERE proveedor_id = ?`,
+          [nombre_propietario, dui, nrc, id]
         );
       } else {
         // Si no existe, insertar
         await req.db.query(
-          `INSERT INTO proveedores_naturales (proveedor_id, nombre_propietario, dui) 
-            VALUES (?, ?, ?)`,
-          [id, nombre_propietario, dui]
+          `INSERT INTO proveedores_naturales (proveedor_id, nombre_propietario, dui, nrc) 
+            VALUES (?, ?, ?, ?)`,
+          [id, nombre_propietario, dui, nrc]
         );
       }
-    } else if (tipo_proveedor === 'Juridico') {
+    } else if (tipo_proveedor === 'Jurídico') {
       // Verificar si ya existe un registro en proveedores_juridicos
       const [existingJuridico] = await req.db.query(
         "SELECT id FROM proveedores_juridicos WHERE proveedor_id = ?",
@@ -611,20 +757,49 @@ router.put('/proveedores/:id', async (req, res) => {
         // Si existe, actualizar
         await req.db.query(
           `UPDATE proveedores_juridicos SET 
-              razon_social = ?, 
-              nit = ?, 
-              nrc = ?, 
-              giro = ?, 
-              correspondencia = ?
-            WHERE proveedor_id = ?`,
-          [razon_social, nit, nrc, giro, correspondencia, id]
+            razon_social = ?, 
+            nit = ?, 
+            nrc = ?, 
+            nombres_representante = ?, 
+            apellidos_representante = ?, 
+            direccion_representante = ?, 
+            telefono_representante = ?, 
+            dui_representante = ?, 
+            nit_representante = ?, 
+            correo_representante = ? 
+          WHERE proveedor_id = ?`,
+          [razon_social, nit, nrc_juridico, nombres_representante, apellidos_representante, direccion_representante, telefono_representante, dui_representante, nit_representante, correo_representante, id]
         );
       } else {
         // Si no existe, insertar
         await req.db.query(
-          `INSERT INTO proveedores_juridicos (proveedor_id, razon_social, nit, nrc, giro, correspondencia) 
-            VALUES (?, ?, ?, ?, ?, ?)`,
-          [id, razon_social, nit, nrc, giro, correspondencia]
+          `INSERT INTO proveedores_juridicos (proveedor_id, razon_social, nit, nrc, nombres_representante, apellidos_representante, direccion_representante, telefono_representante, dui_representante, nit_representante, correo_representante) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, razon_social, nit, nrc_juridico, nombres_representante, apellidos_representante, direccion_representante, telefono_representante, dui_representante, nit_representante, correo_representante]
+        );
+      }
+    } else if (tipo_proveedor === 'Sujeto Excluido') {
+      // Verificar si ya existe un registro en proveedores_excluidos
+      const [existingExcluido] = await req.db.query(
+        "SELECT id FROM proveedores_excluidos WHERE proveedor_id = ?",
+        [id]
+      );
+
+      if (existingExcluido.length > 0) {
+        // Si existe, actualizar
+        await req.db.query(
+          `UPDATE proveedores_excluidos SET 
+            nombre_propietario = ?, 
+            dui = ? 
+          WHERE proveedor_id = ?`,
+          [nombre_propietario, dui, id]
+        );
+      } else {
+        // Si no existe, insertar
+        await req.db.query(
+          `INSERT INTO proveedores_excluidos (proveedor_id, nombre_propietario, dui) 
+            VALUES (?, ?, ?)`,
+          [id, nombre_propietario, dui]
         );
       }
     }
@@ -663,9 +838,6 @@ router.get("/proveedores/:id", async (req, res) => {
 });
 
 
-
-
-// DELETE: Eliminar proveedor por ID
 // DELETE: Eliminar proveedor por ID
 router.delete("/proveedores/:id", async (req, res) => {
   const proveedorId = req.params.id;
@@ -674,7 +846,7 @@ router.delete("/proveedores/:id", async (req, res) => {
   try {
     await connection.beginTransaction(); // Iniciar transacción
 
-    // Verificar el tipo de proveedor (natural o jurídico)
+    // Verificar el tipo de proveedor (natural, jurídico o excluido)
     const [result] = await connection.query(
       "SELECT tipo_proveedor FROM proveedores WHERE id = ?",
       [proveedorId]
@@ -686,6 +858,7 @@ router.delete("/proveedores/:id", async (req, res) => {
 
     const tipoProveedor = result[0].tipo_proveedor;
 
+    // Eliminar del proveedor dependiendo del tipo
     if (tipoProveedor === "Natural") {
       // Eliminar de la tabla proveedores_naturales si es natural
       await connection.query(
@@ -696,6 +869,12 @@ router.delete("/proveedores/:id", async (req, res) => {
       // Eliminar de la tabla proveedores_juridicos si es jurídico
       await connection.query(
         "DELETE FROM proveedores_juridicos WHERE proveedor_id = ?",
+        [proveedorId]
+      );
+    } else if (tipoProveedor === "Sujeto Excluido") {
+      // Eliminar de la tabla proveedores_excluidos si es excluido
+      await connection.query(
+        "DELETE FROM proveedores_excluidos WHERE proveedor_id = ?",
         [proveedorId]
       );
     }
@@ -717,5 +896,265 @@ router.delete("/proveedores/:id", async (req, res) => {
   }
 });
 
+
+/* ==================== RUTAS DE CATALOGO ==================== */
+
+// GET y POST: Obtener todos los productos del catálogo y crear un nuevo producto
+router.route("/catalogo")
+  .get(async (req, res) => {
+    try {
+      // Obtener el parámetro de búsqueda, si existe
+      const search = req.query.search ? req.query.search : '';
+
+      // Consulta SQL con filtro de búsqueda
+      const [results] = await req.db.query(`
+        SELECT c.*, p.nombre AS presentacion_nombre, m.nombre AS marca_nombre, cat.nombre AS categoria_nombre
+        FROM catalogo c
+        LEFT JOIN presentacion p ON c.presentacion_id = p.id
+        LEFT JOIN marca m ON c.marca_id = m.id
+        LEFT JOIN categoria cat ON c.categoria_id = cat.id
+        WHERE c.nombre_producto LIKE ? OR c.codigo LIKE ?  -- Filtrado por nombre o código
+      `, [`%${search}%`, `%${search}%`]); // % es para búsqueda parcial
+
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ message: "Error al obtener productos del catálogo", error: err.message });
+    }
+  })
+  .post(upload.single("imagen"), async (req, res) => {
+    console.log(req.file); // Verifica si la imagen se está recibiendo
+    try {
+      const { nombre_producto, codigo, presentacion_id, marca_id, categoria_id, descripcion } = req.body;
+      const imagen = req.file ? req.file.filename : null; // Obtener el nombre del archivo subido
+  
+      const [result] = await req.db.query("INSERT INTO catalogo SET ?", {
+        nombre_producto,
+        codigo,
+        presentacion_id,
+        marca_id,
+        categoria_id,
+        descripcion,
+        imagen,
+      });
+  
+      res.status(201).json({
+        message: "Producto creado",
+        id: result.insertId,
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Error al crear producto", error: err.message });
+    }
+  });
+
+
+// GET: Obtener producto por ID
+router.get("/catalogo/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [results] = await req.db.query(`
+      SELECT c.*, p.nombre AS presentacion_nombre, m.nombre AS marca_nombre, cat.nombre AS categoria_nombre
+      FROM catalogo c
+      LEFT JOIN presentacion p ON c.presentacion_id = p.id
+      LEFT JOIN marca m ON c.marca_id = m.id
+      LEFT JOIN categoria cat ON c.categoria_id = cat.id
+      WHERE c.id = ?
+    `, [id]);
+    
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+    res.json(results[0]);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener producto", error: err.message });
+  }
+});
+
+// PUT: Actualizar producto por ID
+router.put("/catalogo/:id", upload.single("imagen"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre_producto, codigo, presentacion_id, marca_id, categoria_id, descripcion } = req.body;
+    
+    // Obtener la imagen actual antes de actualizar
+    const [rows] = await req.db.query("SELECT imagen FROM catalogo WHERE id = ?", [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    // Mantener la imagen actual si no se sube una nueva
+    const imagen = req.file ? req.file.filename : rows[0].imagen;
+
+    await req.db.query(
+      "UPDATE catalogo SET nombre_producto = ?, codigo = ?, presentacion_id = ?, marca_id = ?, categoria_id = ?, descripcion = ?, imagen = ? WHERE id = ?",
+      [nombre_producto, codigo, presentacion_id, marca_id, categoria_id, descripcion, imagen, id] 
+    );
+
+    res.json({ message: "Producto actualizado correctamente" });
+  } catch (err) {
+    res.status(500).json({ message: "Error al actualizar producto", error: err.message });
+  }
+});
+
+
+// DELETE: Eliminar producto por ID
+router.delete("/catalogo/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await req.db.query("DELETE FROM catalogo WHERE id = ?", [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+    res.json({ message: "Producto eliminado exitosamente" });
+  } catch (err) {
+    res.status(500).json({ message: "Error al eliminar producto", error: err.message });
+  }
+});
+
+
+/* ==================== RUTAS DE PRESENTACION BASICA ==================== */
+
+// GET y POST: Obtener todas las presentacion y crear una nueva
+router.route("/presentacion")
+  .get(async (req, res) => {
+    try {
+      const [results] = await req.db.query("SELECT * FROM presentacion");
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ message: "Error al obtener presentacion", error: err.message });
+    }
+  })
+  .post(async (req, res) => {
+    try {
+      // Aquí podrías agregar validación de campos si lo requieres
+      const [result] = await req.db.query("INSERT INTO presentacion SET ?", [req.body]);
+      res.status(201).json({
+        message: "Presentacion creada",
+        id: result.insertId,
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Error al crear presentacion", error: err.message });
+    }
+  });
+
+// GET: Obtener presentacion por ID
+router.get("/presentacion/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [results] = await req.db.query("SELECT * FROM presentacion WHERE id = ?", [id]);
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Presentacion no encontrada" });
+    }
+    res.json(results[0]);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener sucursal", error: err.message });
+  }
+});
+
+// PUT: Actualizar presentacion por ID
+router.put("/presentacion/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, descripcion } = req.body;
+    const [rows] = await req.db.query("SELECT * FROM presentacion WHERE id = ?", [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Presentacion no encontrada" });
+    }
+    await req.db.query(
+      "UPDATE presentacion SET  nombre = ?, descripcion = ? WHERE id = ?",
+      [ nombre, descripcion, id]
+    );
+    res.json({ message: "Presentacion actualizada correctamente" });
+  } catch (err) {
+    res.status(500).json({ message: "Error al actualizar la presentacion", error: err.message });
+  }
+});
+
+// DELETE: Eliminar presentacion por ID
+router.delete("/presentacion/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await req.db.query("DELETE FROM presentacion WHERE id = ?", [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Presentacion no encontrada" });
+    }
+    res.json({ message: "Presentacion eliminada exitosamente" });
+  } catch (err) {
+    res.status(500).json({ message: "Error al eliminar presentacion", error: err.message });
+  }
+});
+
+
+
+/* ==================== RUTAS DE MARCA ==================== */
+
+// GET y POST: Obtener todas las MARCA y crear una nueva
+router.route("/marca")
+  .get(async (req, res) => {
+    try {
+      const [results] = await req.db.query("SELECT * FROM marca");
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ message: "Error al obtener marca", error: err.message });
+    }
+  })
+  .post(async (req, res) => {
+    try {
+      // Aquí podrías agregar validación de campos si lo requieres
+      const [result] = await req.db.query("INSERT INTO marca SET ?", [req.body]);
+      res.status(201).json({
+        message: "Marca creada",
+        id: result.insertId,
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Error al crear marca", error: err.message });
+    }
+  });
+
+// GET: Obtener presentacion por ID
+router.get("/marca/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [results] = await req.db.query("SELECT * FROM marca WHERE id = ?", [id]);
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Marca no encontrada" });
+    }
+    res.json(results[0]);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener marca", error: err.message });
+  }
+});
+
+// PUT: Actualizar marca por ID
+router.put("/marca/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, descripcion } = req.body;
+    const [rows] = await req.db.query("SELECT * FROM marca WHERE id = ?", [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "marca no encontrada" });
+    }
+    await req.db.query(
+      "UPDATE marca SET  nombre = ?, descripcion = ? WHERE id = ?",
+      [ nombre, descripcion, id]
+    );
+    res.json({ message: "marca actualizada correctamente" });
+  } catch (err) {
+    res.status(500).json({ message: "Error al actualizar la marca", error: err.message });
+  }
+});
+
+// DELETE: Eliminar marca por ID
+router.delete("/marca/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await req.db.query("DELETE FROM marca WHERE id = ?", [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Marca no encontrada" });
+    }
+    res.json({ message: "Marca eliminada exitosamente" });
+  } catch (err) {
+    res.status(500).json({ message: "Error al eliminar marca", error: err.message });
+  }
+});
 
 module.exports = router;

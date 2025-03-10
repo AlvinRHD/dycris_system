@@ -48,10 +48,8 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
         _empleadoController.text = _loggedInUser!['nombre'] ?? 'N/A';
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Sesión no encontrada. Por favor, inicia sesión.')),
-      );
+      _mostrarMensaje('Sesión no encontrada. Por favor, inicia sesión.',
+          esError: true);
       Navigator.pushReplacementNamed(context, '/login');
     }
   }
@@ -66,8 +64,7 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
       });
     } catch (e) {
       setState(() => _isLoadingProductos = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al buscar productos: $e')));
+      _mostrarMensaje('Error al buscar productos: $e', esError: true);
     }
   }
 
@@ -86,8 +83,7 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
       });
     } catch (e) {
       setState(() => _isLoadingSucursalesOrigen = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar sucursales: $e')));
+      _mostrarMensaje('Error al cargar sucursales: $e', esError: true);
     }
   }
 
@@ -106,8 +102,7 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
       });
     } catch (e) {
       setState(() => _isLoadingSucursalesDestino = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar sucursales: $e')));
+      _mostrarMensaje('Error al cargar sucursales: $e', esError: true);
     }
   }
 
@@ -124,11 +119,9 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
         _cantidadController.text.isEmpty ||
         int.tryParse(_cantidadController.text) == null ||
         int.parse(_cantidadController.text) <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Seleccione un producto y especifique una cantidad válida')),
-      );
+      _mostrarMensaje(
+          'Seleccione un producto y especifique una cantidad válida',
+          esError: true);
       return;
     }
 
@@ -167,20 +160,16 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_loggedInUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Usuario no autenticado')),
-      );
+      _mostrarMensaje('Usuario no autenticado', esError: true);
       return;
     }
 
     if (_selectedProductos.isEmpty ||
         _selectedSucursalOrigen == null ||
         _selectedSucursalDestino == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Complete todos los campos requeridos y agregue al menos un producto')),
-      );
+      _mostrarMensaje(
+          'Complete todos los campos requeridos y agregue al menos un producto',
+          esError: true);
       return;
     }
 
@@ -197,271 +186,383 @@ class _AgregarTrasladoScreenState extends State<AgregarTrasladoScreen> {
     try {
       print('Enviando traslado: $traslado'); // Depuración
       await TrasladosApi().addTraslado(traslado);
+      _mostrarMensaje('Traslado agregado correctamente');
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al agregar traslado: $e')));
+      _mostrarMensaje('Error al agregar traslado: $e', esError: true);
     }
+  }
+
+  void _mostrarMensaje(String mensaje, {bool esError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          mensaje,
+          style: TextStyle(color: Colors.white, fontSize: 14),
+        ),
+        backgroundColor: esError ? Colors.red[600] : Colors.green[600],
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Agregar Traslado")),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: Text("Agregar Traslado",
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87)),
+        backgroundColor: Colors.grey[50],
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.black87),
+      ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(12.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
-                controller: _empleadoController,
-                decoration: InputDecoration(
-                    labelText: "Empleado", border: OutlineInputBorder()),
-                readOnly: true,
-              ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _productoController,
-                decoration: InputDecoration(
-                  labelText: "Buscar producto",
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: _buscarProductos,
-                validator: (value) => _selectedProductos.isEmpty
-                    ? 'Agregue al menos un producto'
-                    : null,
-              ),
-              SizedBox(height: 15),
-              Container(
-                height: 150,
-                child: _isLoadingProductos
-                    ? Center(child: CircularProgressIndicator())
-                    : _productos.isEmpty
-                        ? Center(child: Text("No se encontraron productos"))
-                        : ListView.builder(
-                            itemCount: _productos.length,
-                            itemBuilder: (context, index) {
-                              final producto = _productos[index];
-                              return ListTile(
-                                title: Text(producto['nombre'] ?? 'N/A'),
-                                subtitle: Text(
-                                    "Código: ${producto['codigo'] ?? 'N/A'}"),
-                                trailing: ElevatedButton(
-                                  onPressed: () =>
-                                      _seleccionarProducto(producto),
-                                  child: Text("Seleccionar"),
-                                ),
-                              );
-                            },
-                          ),
-              ),
-              SizedBox(height: 15),
+              _buildTextField(_empleadoController, "Empleado", readOnly: true),
+              SizedBox(height: 12),
+              _buildSearchField(
+                  _productoController, "Buscar producto", _buscarProductos),
+              SizedBox(height: 12),
+              _buildProductList(),
+              SizedBox(height: 12),
               if (_productoSeleccionado != null)
                 Text(
                   "Producto seleccionado: ${_productoSeleccionado!['nombre']} (Código: ${_productoSeleccionado!['codigo']})",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87),
                 ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _cantidadController,
-                decoration: InputDecoration(
-                    labelText: "Cantidad", border: OutlineInputBorder()),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (_productoSeleccionado != null &&
-                      (value == null || value.isEmpty)) {
-                    return 'Ingrese una cantidad';
-                  }
-                  final cantidad = int.tryParse(value ?? '');
-                  if (cantidad != null && cantidad <= 0)
-                    return 'Cantidad debe ser mayor a 0';
-                  return null;
-                },
-              ),
-              SizedBox(height: 15),
-              ElevatedButton(
-                onPressed: _agregarProducto,
-                child: Text("Agregar Producto"),
-              ),
-              SizedBox(height: 15),
-              if (_selectedProductos.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Productos seleccionados:",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
-                    Container(
-                      height: 150,
-                      child: ListView.builder(
-                        itemCount: _selectedProductos.length,
-                        itemBuilder: (context, index) {
-                          final producto = _selectedProductos[index];
-                          return ListTile(
-                            title: Text(producto['nombre']),
-                            subtitle: Text("Cantidad: ${producto['cantidad']}"),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.remove),
-                                  onPressed: () =>
-                                      _modificarCantidad(index, -1),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.add),
-                                  onPressed: () => _modificarCantidad(index, 1),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedProductos.removeAt(index);
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _sucursalOrigenSearchController,
-                decoration: InputDecoration(
-                  labelText: "Buscar sucursal origen",
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: _buscarSucursalesOrigen,
-                validator: (value) => _selectedSucursalOrigen == null
-                    ? 'Seleccione una sucursal origen'
-                    : null,
-              ),
-              SizedBox(height: 15),
-              Container(
-                height: 150,
-                child: _isLoadingSucursalesOrigen
-                    ? Center(child: CircularProgressIndicator())
-                    : _sucursalesOrigen.isEmpty
-                        ? Center(child: Text("No se encontraron sucursales"))
-                        : ListView.builder(
-                            itemCount: _sucursalesOrigen.length,
-                            itemBuilder: (context, index) {
-                              final sucursal = _sucursalesOrigen[index];
-                              return ListTile(
-                                title: Text(sucursal['nombre'] ??
-                                    'Sucursal ${sucursal['codigo']}'),
-                                subtitle: Text(
-                                    "Código: ${sucursal['codigo'] ?? 'N/A'}"),
-                                onTap: () {
-                                  setState(() {
-                                    _selectedSucursalOrigen =
-                                        sucursal['codigo'];
-                                    _sucursalOrigenNombre =
-                                        sucursal['nombre'] ??
-                                            sucursal['codigo'];
-                                    _sucursalOrigenSearchController.text =
-                                        _sucursalOrigenNombre ??
-                                            sucursal['codigo'];
-                                    _sucursalesOrigen = [];
-                                  });
-                                },
-                              );
-                            },
-                          ),
-              ),
-              SizedBox(height: 10),
+              SizedBox(height: 12),
+              _buildTextField(_cantidadController, "Cantidad",
+                  keyboardType: TextInputType.number),
+              SizedBox(height: 12),
+              _buildButton("Agregar Producto", _agregarProducto),
+              SizedBox(height: 12),
+              if (_selectedProductos.isNotEmpty) _buildSelectedProducts(),
+              SizedBox(height: 12),
+              _buildSearchField(_sucursalOrigenSearchController,
+                  "Buscar sucursal origen", _buscarSucursalesOrigen),
+              SizedBox(height: 12),
+              _buildSucursalList(
+                  _sucursalesOrigen, _isLoadingSucursalesOrigen, true),
+              SizedBox(height: 12),
               if (_selectedSucursalOrigen != null)
                 Text(
                   "Sucursal origen seleccionada: $_sucursalOrigenNombre",
                   style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.green),
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green[600]),
                 ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _sucursalDestinoSearchController,
-                decoration: InputDecoration(
-                  labelText: "Buscar sucursal destino",
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: _buscarSucursalesDestino,
-                validator: (value) {
-                  if (_selectedSucursalDestino == null)
-                    return 'Seleccione una sucursal destino';
-                  if (_selectedSucursalDestino == _selectedSucursalOrigen)
-                    return 'La sucursal destino debe ser diferente a la origen';
-                  return null;
-                },
-              ),
-              SizedBox(height: 15),
-              Container(
-                height: 150,
-                child: _isLoadingSucursalesDestino
-                    ? Center(child: CircularProgressIndicator())
-                    : _sucursalesDestino.isEmpty
-                        ? Center(child: Text("No se encontraron sucursales"))
-                        : ListView.builder(
-                            itemCount: _sucursalesDestino.length,
-                            itemBuilder: (context, index) {
-                              final sucursal = _sucursalesDestino[index];
-                              return ListTile(
-                                title: Text(sucursal['nombre'] ??
-                                    'Sucursal ${sucursal['codigo']}'),
-                                subtitle: Text(
-                                    "Código: ${sucursal['codigo'] ?? 'N/A'}"),
-                                onTap: () {
-                                  setState(() {
-                                    _selectedSucursalDestino =
-                                        sucursal['codigo'];
-                                    _sucursalDestinoNombre =
-                                        sucursal['nombre'] ??
-                                            sucursal['codigo'];
-                                    _sucursalDestinoSearchController.text =
-                                        _sucursalDestinoNombre ??
-                                            sucursal['codigo'];
-                                    _sucursalesDestino = [];
-                                  });
-                                },
-                              );
-                            },
-                          ),
-              ),
-              SizedBox(height: 10),
+              SizedBox(height: 12),
+              _buildSearchField(_sucursalDestinoSearchController,
+                  "Buscar sucursal destino", _buscarSucursalesDestino),
+              SizedBox(height: 12),
+              _buildSucursalList(
+                  _sucursalesDestino, _isLoadingSucursalesDestino, false),
+              SizedBox(height: 12),
               if (_selectedSucursalDestino != null)
                 Text(
                   "Sucursal destino seleccionada: $_sucursalDestinoNombre",
                   style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.green),
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green[600]),
                 ),
-              SizedBox(height: 15),
-              DropdownButtonFormField<String>(
-                value: _estadoSeleccionado,
-                decoration: InputDecoration(
-                    labelText: "Estado", border: OutlineInputBorder()),
-                items: ['Pendiente', 'Completado', 'Cancelado']
-                    .map((estado) =>
-                        DropdownMenuItem(value: estado, child: Text(estado)))
-                    .toList(),
-                onChanged: (value) =>
-                    setState(() => _estadoSeleccionado = value!),
-                validator: (value) =>
-                    value == null ? 'Seleccione un estado' : null,
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _agregarTraslado,
-                child: Text("Guardar Traslado"),
-              ),
+              SizedBox(height: 12),
+              _buildEstadoDropdown(),
+              SizedBox(height: 24),
+              _buildButton("Guardar Traslado", _agregarTraslado),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label,
+      {bool readOnly = false, TextInputType? keyboardType}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        readOnly: readOnly,
+        keyboardType: keyboardType,
+        style: TextStyle(fontSize: 14, color: Colors.black87),
+        validator: (value) {
+          if (label == "Cantidad" &&
+              _productoSeleccionado != null &&
+              (value == null || value.isEmpty)) {
+            return 'Ingrese una cantidad';
+          }
+          if (label == "Cantidad") {
+            final cantidad = int.tryParse(value ?? '');
+            if (cantidad != null && cantidad <= 0)
+              return 'Cantidad debe ser mayor a 0';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildSearchField(TextEditingController controller, String label,
+      Function(String) onChanged) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        onChanged: onChanged,
+        style: TextStyle(fontSize: 14, color: Colors.black87),
+      ),
+    );
+  }
+
+  Widget _buildProductList() {
+    return Container(
+      height: 150,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: _isLoadingProductos
+          ? Center(child: CircularProgressIndicator())
+          : _productos.isEmpty
+              ? Center(
+                  child: Text("No se encontraron productos",
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14)))
+              : ListView.builder(
+                  itemCount: _productos.length,
+                  itemBuilder: (context, index) {
+                    final producto = _productos[index];
+                    return ListTile(
+                      title: Text(producto['nombre'] ?? 'N/A',
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.black87)),
+                      subtitle: Text("Código: ${producto['codigo'] ?? 'N/A'}",
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      trailing: ElevatedButton(
+                        onPressed: () => _seleccionarProducto(producto),
+                        child: Text("Seleccionar",
+                            style:
+                                TextStyle(fontSize: 14, color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+
+  Widget _buildSelectedProducts() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Productos seleccionados:",
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87)),
+        SizedBox(height: 10),
+        Container(
+          height: 150,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+            ],
+          ),
+          child: ListView.builder(
+            itemCount: _selectedProductos.length,
+            itemBuilder: (context, index) {
+              final producto = _selectedProductos[index];
+              return ListTile(
+                title: Text(producto['nombre'],
+                    style: TextStyle(fontSize: 14, color: Colors.black87)),
+                subtitle: Text("Cantidad: ${producto['cantidad']}",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.remove, color: Colors.grey[600]),
+                      onPressed: () => _modificarCantidad(index, -1),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.add, color: Colors.grey[600]),
+                      onPressed: () => _modificarCantidad(index, 1),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete, color: Colors.red[600]),
+                      onPressed: () {
+                        setState(() {
+                          _selectedProductos.removeAt(index);
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSucursalList(
+      List<dynamic> sucursales, bool isLoading, bool isOrigen) {
+    return Container(
+      height: 150,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : sucursales.isEmpty
+              ? Center(
+                  child: Text("No se encontraron sucursales",
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14)))
+              : ListView.builder(
+                  itemCount: sucursales.length,
+                  itemBuilder: (context, index) {
+                    final sucursal = sucursales[index];
+                    return ListTile(
+                      title: Text(
+                          sucursal['nombre'] ??
+                              'Sucursal ${sucursal['codigo']}',
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.black87)),
+                      subtitle: Text("Código: ${sucursal['codigo'] ?? 'N/A'}",
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      onTap: () {
+                        setState(() {
+                          if (isOrigen) {
+                            _selectedSucursalOrigen = sucursal['codigo'];
+                            _sucursalOrigenNombre =
+                                sucursal['nombre'] ?? sucursal['codigo'];
+                            _sucursalOrigenSearchController.text =
+                                _sucursalOrigenNombre ?? sucursal['codigo'];
+                            _sucursalesOrigen = [];
+                          } else {
+                            _selectedSucursalDestino = sucursal['codigo'];
+                            _sucursalDestinoNombre =
+                                sucursal['nombre'] ?? sucursal['codigo'];
+                            _sucursalDestinoSearchController.text =
+                                _sucursalDestinoNombre ?? sucursal['codigo'];
+                            _sucursalesDestino = [];
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+    );
+  }
+
+  Widget _buildEstadoDropdown() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _estadoSeleccionado,
+        decoration: InputDecoration(
+          labelText: "Estado",
+          labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        items: ['Pendiente', 'Completado', 'Cancelado']
+            .map((estado) => DropdownMenuItem(
+                value: estado,
+                child: Text(estado, style: TextStyle(fontSize: 14))))
+            .toList(),
+        onChanged: (value) => setState(() => _estadoSeleccionado = value!),
+        validator: (value) => value == null ? 'Seleccione un estado' : null,
+      ),
+    );
+  }
+
+  Widget _buildButton(String label, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        child: Text(label, style: TextStyle(fontSize: 14, color: Colors.white)),
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          backgroundColor: Colors.blue[600],
+          elevation: 2,
         ),
       ),
     );

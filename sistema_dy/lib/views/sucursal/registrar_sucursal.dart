@@ -19,6 +19,9 @@ class _RegistrarSucursalState extends State<RegistrarSucursal> {
   String selectedPais = 'El Salvador';
   String? selectedDepartamento;
   String? selectedCiudad;
+  TextEditingController direccionController = TextEditingController();
+  TextEditingController telefonoController = TextEditingController();
+  TextEditingController gmailController = TextEditingController();
   String selectedEstado = 'Activo'; // Estado por defecto
 
   final List<String> estados = ['Activo', 'Inactivo'];
@@ -337,6 +340,9 @@ class _RegistrarSucursalState extends State<RegistrarSucursal> {
           'pais': selectedPais,
           'departamento': selectedDepartamento,
           'ciudad': selectedCiudad,
+          'direccion': direccionController.text,
+          'telefono': telefonoController.text,
+          'gmail': gmailController.text,
           'estado': selectedEstado,
         }),
       );
@@ -449,6 +455,21 @@ class _RegistrarSucursalState extends State<RegistrarSucursal> {
                                         selectedCiudad = value;
                                       });
                                     },
+                                  ),
+                                  _buildTextField(
+                                    controller: direccionController,
+                                    label: "Direccion",
+                                    icon: Icons.directions,
+                                  ),
+                                  _buildTextField(
+                                    controller: telefonoController,
+                                    label: "Telefono",
+                                    icon: Icons.phone,
+                                  ),
+                                  _buildTextField(
+                                    controller: gmailController,
+                                    label: "Correo Electonico",
+                                    icon: Icons.email,
                                   ),
                                   const SizedBox(height: 16),
                                   _buildDropdownField(

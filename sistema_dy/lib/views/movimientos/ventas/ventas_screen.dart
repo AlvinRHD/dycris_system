@@ -34,33 +34,21 @@ class _VentasScreenState extends State<VentasScreen> {
     super.dispose();
   }
 
-// Nuevo botón "Mandar a Sucursal" temporal, lo vamos a eliminar
-  void _asignarSucursalManual(Map<String, dynamic> venta) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AsignarSucursalManualScreen(venta: venta),
-      ),
-    );
-    if (result == true) {
-      _cargarVentas(); // Refrescar la lista después de asignar
-    }
-  }
-// Nuevo botón "Mandar a Sucursal" temporal, lo vamos a eliminar
-
   Future<void> _cargarVentas() async {
     try {
       final data = await VentaApi().getVentas(page: _page, limit: _limit);
       setState(() {
-        ventas = data['ventas'];
+        ventas = data['ventas'] ?? [];
         filteredVentas = ventas;
-        _total = data['total'];
+        _total = data['total'] ?? 0;
       });
     } catch (e) {
+      print('Error al cargar ventas: $e'); // Agregar log para depurar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Error al cargar ventas: $e'),
-            backgroundColor: Colors.red),
+          content: Text('Error al cargar ventas: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -119,313 +107,251 @@ class _VentasScreenState extends State<VentasScreen> {
     }
   }
 
+  void _asignarSucursalManual(Map<String, dynamic> venta) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => AsignarSucursalManualScreen(venta: venta)),
+    );
+    if (result == true) {
+      _cargarVentas();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return CustomNavigationBar(
-        child: Scaffold(
-      appBar: AppBar(
-        title: Text('Ventas', style: TextStyle(fontWeight: FontWeight.bold)),
-        // actions: [
-        //   Padding(
-        //     padding: const EdgeInsets.symmetric(horizontal: 8.0),
-        //     child: ElevatedButton.icon(
-        //       onPressed: () async {
-        //         final result = await Navigator.push(
-        //           context,
-        //           MaterialPageRoute(builder: (context) => AgregarVentaScreen()),
-        //         );
-        //         if (result == true) _cargarVentas();
-        //       },
-        //       icon: Icon(Icons.add),
-        //       label: Text("Agregar Venta"),
-        //     ),
-        //   ),
-        // ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar ventas...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () => setState(
-                      () => _mostrarTodosLosCampos = !_mostrarTodosLosCampos),
-                  child: Text(_mostrarTodosLosCampos
-                      ? "Ocultar Campos"
-                      : "Mostrar Todos"),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            Expanded(
-              child: filteredVentas.isEmpty
-                  ? Center(child: Text("No hay ventas disponibles"))
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columns: _mostrarTodosLosCampos
-                            ? [
-                                DataColumn(label: Text('Código')),
-                                DataColumn(label: Text('Cliente')),
-                                DataColumn(label: Text('Empleado')),
-                                DataColumn(label: Text('Fecha')),
-                                DataColumn(label: Text('Tipo Factura')),
-                                DataColumn(label: Text('Método Pago')),
-                                DataColumn(label: Text('Descripción')),
-                                DataColumn(label: Text('Total')),
-                                DataColumn(label: Text('Descuento')),
-                                DataColumn(label: Text('Sucursal')),
-                                DataColumn(label: Text('Factura')), // Nuevo
-                                DataColumn(
-                                    label: Text('Crédito Fiscal')), // Nuevo
-                                DataColumn(
-                                    label:
-                                        Text('Factura Exportación')), // Nuevo
-                                DataColumn(
-                                    label: Text('Nota Crédito')), // Nuevo
-                                DataColumn(label: Text('Nota Débito')), // Nuevo
-                                DataColumn(
-                                    label: Text('Nota Remisión')), // Nuevo
-                                DataColumn(label: Text('Liquidación')), // Nuevo
-                                DataColumn(label: Text('Retención')), // Nuevo
-                                DataColumn(
-                                    label:
-                                        Text('Contable Liquidación')), // Nuevo
-                                DataColumn(label: Text('Donación')), // Nuevo
-                                DataColumn(
-                                    label: Text('Sujeto Excluido')), // Nuevo
-                                DataColumn(label: Text('Acciones')),
-                              ]
-                            : [
-                                DataColumn(label: Text('Código')),
-                                DataColumn(label: Text('Cliente')),
-                                DataColumn(label: Text('Empleado')),
-                                DataColumn(label: Text('Descripción')),
-                                DataColumn(label: Text('Total')),
-                                DataColumn(label: Text('Descuento')),
-                                DataColumn(label: Text('Sucursal')),
-                                DataColumn(label: Text('Acciones')),
-                              ],
-                        rows: filteredVentas.map((venta) {
-                          final total = double.tryParse(
-                                  venta['total']?.toString() ?? '0.0') ??
-                              0.0;
-                          final descuento = double.tryParse(
-                                  venta['descuento']?.toString() ?? '0.0') ??
-                              0.0;
-
-                          return DataRow(
-                            cells: _mostrarTodosLosCampos
-                                ? [
-                                    DataCell(
-                                        Text(venta['codigo_venta'] ?? 'N/A')),
-                                    DataCell(
-                                        Text(venta['cliente_nombre'] ?? 'N/A')),
-                                    DataCell(Text(
-                                        venta['empleado_nombre'] ?? 'N/A')),
-                                    DataCell(Text(
-                                      venta['fecha_venta'] != null
-                                          ? DateFormat('dd/MM/yyyy').format(
-                                              DateTime.parse(
-                                                  venta['fecha_venta']))
-                                          : 'N/A',
-                                    )),
-                                    DataCell(
-                                        Text(venta['tipo_factura'] ?? 'N/A')),
-                                    DataCell(
-                                        Text(venta['metodo_pago'] ?? 'N/A')),
-                                    DataCell(Text(
-                                        venta['descripcion_compra'] ?? 'N/A')),
-                                    DataCell(
-                                        Text('\$${total.toStringAsFixed(2)}')),
-                                    DataCell(Text(
-                                        '${descuento.toStringAsFixed(2)}%')),
-                                    DataCell(Text(
-                                        venta['sucursal_nombre'] ?? 'N/A')),
-                                    DataCell(Text(
-                                        venta['factura'] ?? 'N/A')), // Nuevo
-                                    DataCell(Text(
-                                        venta['comprobante_credito_fiscal'] ??
-                                            'N/A')), // Nuevo
-                                    DataCell(Text(
-                                        venta['factura_exportacion'] ??
-                                            'N/A')), // Nuevo
-                                    DataCell(Text(venta['nota_credito'] ??
-                                        'N/A')), // Nuevo
-                                    DataCell(Text(venta['nota_debito'] ??
-                                        'N/A')), // Nuevo
-                                    DataCell(Text(venta['nota_remision'] ??
-                                        'N/A')), // Nuevo
-                                    DataCell(Text(
-                                        venta['comprobante_liquidacion'] ??
-                                            'N/A')), // Nuevo
-                                    DataCell(Text(
-                                        venta['comprobante_retencion'] ??
-                                            'N/A')), // Nuevo
-                                    DataCell(Text(venta[
-                                            'documento_contable_liquidacion'] ??
-                                        'N/A')), // Nuevo
-                                    DataCell(Text(
-                                        venta['comprobante_donacion'] ??
-                                            'N/A')), // Nuevo
-                                    DataCell(Text(
-                                        venta['factura_sujeto_excluido'] ??
-                                            'N/A')), // Nuevo
-                                    DataCell(
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(Icons.history),
-                                            onPressed: () => showDialog(
-                                              context: context,
-                                              builder: (_) =>
-                                                  HistorialCambiosDialog(
-                                                ventaId: venta['idVentas'],
-                                                codigoVenta:
-                                                    venta['codigo_venta'],
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.visibility),
-                                            onPressed: () => showDialog(
-                                              context: context,
-                                              builder: (_) =>
-                                                  DetalleVentaDialog(
-                                                      venta: venta),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.edit,
-                                                color: Colors.blue),
-                                            onPressed: () =>
-                                                _editarVenta(venta),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.delete,
-                                                color: Colors.red),
-                                            onPressed: () => _eliminarVenta(
-                                                venta['idVentas']),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.store,
-                                                color: Colors.orange),
-                                            onPressed: () =>
-                                                _asignarSucursalManual(venta),
-                                          ), // Nuevo botón "Mandar a Sucursal"temporal, lo vamos a eliminar
-                                        ],
-                                      ),
-                                    ),
-                                  ]
-                                : [
-                                    DataCell(
-                                        Text(venta['codigo_venta'] ?? 'N/A')),
-                                    DataCell(
-                                        Text(venta['cliente_nombre'] ?? 'N/A')),
-                                    DataCell(Text(
-                                        venta['empleado_nombre'] ?? 'N/A')),
-                                    DataCell(Text(
-                                        venta['descripcion_compra'] ?? 'N/A')),
-                                    DataCell(
-                                        Text('\$${total.toStringAsFixed(2)}')),
-                                    DataCell(Text(
-                                        '${descuento.toStringAsFixed(2)}%')),
-                                    DataCell(Text(venta['sucursal_nombre'] ??
-                                        'N/A')), //columna agregada para mostrar la venta a sucursal por defecto
-                                    DataCell(
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(Icons.history),
-                                            onPressed: () => showDialog(
-                                              context: context,
-                                              builder: (_) =>
-                                                  HistorialCambiosDialog(
-                                                ventaId: venta['idVentas'],
-                                                codigoVenta:
-                                                    venta['codigo_venta'],
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.visibility),
-                                            onPressed: () => showDialog(
-                                              context: context,
-                                              builder: (_) =>
-                                                  DetalleVentaDialog(
-                                                      venta: venta),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.edit,
-                                                color: Colors.blue),
-                                            onPressed: () =>
-                                                _editarVenta(venta),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.delete,
-                                                color: Colors.red),
-                                            onPressed: () => _eliminarVenta(
-                                                venta['idVentas']),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.store,
-                                                color: Colors.orange),
-                                            onPressed: () =>
-                                                _asignarSucursalManual(venta),
-                                          ), // Nuevo botón "Mandar a Sucursal" lo vamos a eliminar
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                          );
-                        }).toList(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Ventas', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar ventas...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 0),
                       ),
                     ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: _page > 1
-                      ? () => setState(() {
-                            _page--;
-                            _cargarVentas();
-                          })
-                      : null,
-                  child: Text("Anterior"),
+                  ),
+                  SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => setState(
+                        () => _mostrarTodosLosCampos = !_mostrarTodosLosCampos),
+                    child: Text(
+                        _mostrarTodosLosCampos ? "Ocultar" : "Mostrar Todo"),
+                    style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 12)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Expanded(
+                child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  child: filteredVentas.isEmpty
+                      ? Center(child: Text("No hay ventas disponibles"))
+                      : SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            child: DataTable(
+                              columnSpacing: 12,
+                              dataRowHeight: 48,
+                              headingRowHeight: 40,
+                              columns: _mostrarTodosLosCampos
+                                  ? [
+                                      DataColumn(label: Text('Código')),
+                                      DataColumn(label: Text('Cliente')),
+                                      DataColumn(label: Text('Empleado')),
+                                      DataColumn(label: Text('Fecha')),
+                                      DataColumn(label: Text('Tipo DTE')),
+                                      DataColumn(label: Text('Pago')),
+                                      DataColumn(label: Text('Descripción')),
+                                      DataColumn(label: Text('Total')),
+                                      DataColumn(label: Text('Desc.')),
+                                      DataColumn(label: Text('Sucursal')),
+                                      DataColumn(label: Text('Acciones')),
+                                    ]
+                                  : [
+                                      DataColumn(label: Text('Código')),
+                                      DataColumn(label: Text('Cliente')),
+                                      DataColumn(label: Text('Empleado')),
+                                      DataColumn(label: Text('Descripción')),
+                                      DataColumn(label: Text('Total')),
+                                      DataColumn(label: Text('Desc.')),
+                                      DataColumn(label: Text('Sucursal')),
+                                      DataColumn(label: Text('Acciones')),
+                                    ],
+                              rows: filteredVentas.map((venta) {
+                                final total = double.tryParse(
+                                        venta['total']?.toString() ?? '0.0') ??
+                                    0.0;
+                                final descuento = double.tryParse(
+                                        venta['descuento']?.toString() ??
+                                            '0.0') ??
+                                    0.0;
+
+                                return DataRow(
+                                  cells: _mostrarTodosLosCampos
+                                      ? [
+                                          DataCell(Text(
+                                              venta['codigo_venta'] ?? 'N/A')),
+                                          DataCell(Text(
+                                              venta['cliente_nombre'] ??
+                                                  'N/A')),
+                                          DataCell(Text(
+                                              venta['empleado_nombre'] ??
+                                                  'N/A')),
+                                          DataCell(Text(
+                                            venta['fecha_venta'] != null
+                                                ? DateFormat('dd/MM/yy').format(
+                                                    DateTime.parse(
+                                                        venta['fecha_venta']))
+                                                : 'N/A',
+                                          )),
+                                          DataCell(
+                                              Text(venta['tipo_dte'] ?? 'N/A')),
+                                          DataCell(Text(
+                                              venta['metodo_pago'] ?? 'N/A')),
+                                          DataCell(Text(
+                                              venta['descripcion_compra'] ??
+                                                  'N/A')),
+                                          DataCell(Text(
+                                              '\$${total.toStringAsFixed(2)}')),
+                                          DataCell(Text(
+                                              '${descuento.toStringAsFixed(0)}%')),
+                                          DataCell(Text(
+                                              venta['sucursal_nombre'] ??
+                                                  'N/A')),
+                                          DataCell(_buildActionButtons(venta)),
+                                        ]
+                                      : [
+                                          DataCell(Text(
+                                              venta['codigo_venta'] ?? 'N/A')),
+                                          DataCell(Text(
+                                              venta['cliente_nombre'] ??
+                                                  'N/A')),
+                                          DataCell(Text(
+                                              venta['empleado_nombre'] ??
+                                                  'N/A')),
+                                          DataCell(Text(
+                                              venta['descripcion_compra'] ??
+                                                  'N/A')),
+                                          DataCell(Text(
+                                              '\$${total.toStringAsFixed(2)}')),
+                                          DataCell(Text(
+                                              '${descuento.toStringAsFixed(0)}%')),
+                                          DataCell(Text(
+                                              venta['sucursal_nombre'] ??
+                                                  'N/A')),
+                                          DataCell(_buildActionButtons(venta)),
+                                        ],
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
                 ),
-                SizedBox(width: 20),
-                Text("Página $_page de ${(_total / _limit).ceil()}"),
-                SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: _page < (_total / _limit).ceil()
-                      ? () => setState(() {
-                            _page++;
-                            _cargarVentas();
-                          })
-                      : null,
-                  child: Text("Siguiente"),
-                ),
-              ],
-            ),
-          ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: _page > 1
+                        ? () => setState(() {
+                              _page--;
+                              _cargarVentas();
+                            })
+                        : null,
+                    child: Text("Anterior"),
+                    style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 12)),
+                  ),
+                  SizedBox(width: 16),
+                  Text("Página $_page de ${(_total / _limit).ceil()}"),
+                  SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: _page < (_total / _limit).ceil()
+                        ? () => setState(() {
+                              _page++;
+                              _cargarVentas();
+                            })
+                        : null,
+                    child: Text("Siguiente"),
+                    style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 12)),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ));
+    );
+  }
+
+  Widget _buildActionButtons(Map<String, dynamic> venta) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: 'Ver historial de cambios',
+          child: IconButton(
+            icon: Icon(Icons.history, size: 20),
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => HistorialCambiosDialog(
+                ventaId: venta['idVentas'],
+                codigoVenta: venta['codigo_venta'],
+              ),
+            ),
+          ),
+        ),
+        Tooltip(
+          message: 'Ver detalles',
+          child: IconButton(
+            icon: Icon(Icons.visibility, size: 20),
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => DetalleVentaDialog(venta: venta),
+            ),
+          ),
+        ),
+        Tooltip(
+          message: 'Editar venta',
+          child: IconButton(
+            icon: Icon(Icons.edit, color: Colors.blue, size: 20),
+            onPressed: () => _editarVenta(venta),
+          ),
+        ),
+        Tooltip(
+          message: 'Eliminar venta',
+          child: IconButton(
+            icon: Icon(Icons.delete, color: Colors.red, size: 20),
+            onPressed: () => _eliminarVenta(venta['idVentas']),
+          ),
+        ),
+        Tooltip(
+          message: 'Asignar sucursal',
+          child: IconButton(
+            icon: Icon(Icons.store, color: Colors.orange, size: 20),
+            onPressed: () => _asignarSucursalManual(venta),
+          ),
+        ),
+      ],
+    );
   }
 }

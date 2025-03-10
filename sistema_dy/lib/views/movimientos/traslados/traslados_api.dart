@@ -22,7 +22,28 @@ class TrasladosApi {
     }
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return {
+        'traslados': (data['traslados'] as List)
+            .map((t) => t as Map<String, dynamic>)
+            .map((t) => {
+                  ...t,
+                  'productos': (t['productos'] as List)
+                      .map((p) => p as Map<String, dynamic>)
+                      .map((p) => {
+                            'codigo_inventario':
+                                p['codigo_inventario'] as String,
+                            'cantidad': p['cantidad'] as int,
+                            'producto_nombre': p['producto_nombre'] as String,
+                            'numero_motor': p['numero_motor'] as String?,
+                            'numero_chasis': p['numero_chasis'] as String?,
+                            'descripcion': p['descripcion'] as String?,
+                          })
+                      .toList(),
+                })
+            .toList(),
+        'total': data['total'] as int,
+      };
     }
     throw Exception('Error al cargar traslados');
   }

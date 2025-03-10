@@ -45,14 +45,12 @@ class _EditarOfertaScreenState extends State<EditarOfertaScreen> {
   void _guardarCambios() async {
     if (_formKey.currentState!.validate()) {
       if (_fechaInicio == null || _fechaFin == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Seleccione las fechas de inicio y fin')));
+        _mostrarMensaje('Seleccione las fechas de inicio y fin', esError: true);
         return;
       }
       if (_fechaFin!.isBefore(_fechaInicio!)) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:
-                Text('La fecha fin debe ser posterior a la fecha inicio')));
+        _mostrarMensaje('La fecha fin debe ser posterior a la fecha inicio',
+            esError: true);
         return;
       }
 
@@ -64,10 +62,10 @@ class _EditarOfertaScreenState extends State<EditarOfertaScreen> {
       };
       try {
         await OfertasApi().updateOferta(widget.oferta['id'], datosActualizados);
+        _mostrarMensaje('Oferta actualizada correctamente');
         Navigator.pop(context, true);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al actualizar oferta: $e')));
+        _mostrarMensaje('Error al actualizar oferta: $e', esError: true);
       }
     }
   }
@@ -112,61 +110,150 @@ class _EditarOfertaScreenState extends State<EditarOfertaScreen> {
     }
   }
 
+  void _mostrarMensaje(String mensaje, {bool esError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          mensaje,
+          style: TextStyle(color: Colors.white, fontSize: 14),
+        ),
+        backgroundColor: esError ? Colors.red[600] : Colors.green[600],
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text("Editar Oferta (${widget.oferta['producto_nombre']})"),
+        title: Text(
+          "Editar Oferta (${widget.oferta['producto_nombre']})",
+          style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+        ),
+        backgroundColor: Colors.grey[50],
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.black87),
         actions: [
-          IconButton(icon: Icon(Icons.save), onPressed: _guardarCambios),
+          IconButton(
+            icon: Icon(Icons.save, color: Colors.blue[600]),
+            onPressed: _guardarCambios,
+          ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(12),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Código: ${widget.oferta['codigo_oferta'] ?? 'N/A'}"),
-              SizedBox(height: 15),
-              Text("Producto: ${widget.oferta['producto_nombre'] ?? 'N/A'}"),
-              SizedBox(height: 15),
+              Text("Código: ${widget.oferta['codigo_oferta'] ?? 'N/A'}",
+                  style: TextStyle(fontSize: 14, color: Colors.black87)),
+              SizedBox(height: 12),
+              Text("Producto: ${widget.oferta['producto_nombre'] ?? 'N/A'}",
+                  style: TextStyle(fontSize: 14, color: Colors.black87)),
+              SizedBox(height: 12),
               Text(
-                  "Precio Original: ${widget.oferta['precio_venta'] != null ? '\$${double.tryParse(widget.oferta['precio_venta'].toString())?.toStringAsFixed(2)}' : 'N/A'}"),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _descuentoController,
-                decoration: InputDecoration(
-                    labelText: 'Descuento (%)', border: OutlineInputBorder()),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return 'Ingrese un descuento';
-                  final descuento = double.tryParse(value);
-                  if (descuento == null || descuento <= 0 || descuento > 100) {
-                    return 'El descuento debe estar entre 0 y 100';
-                  }
-                  return null;
-                },
+                "Precio Original: ${widget.oferta['precio_venta'] != null ? '\$${double.tryParse(widget.oferta['precio_venta'].toString())?.toStringAsFixed(2)}' : 'N/A'}",
+                style: TextStyle(fontSize: 14, color: Colors.black87),
               ),
-              SizedBox(height: 15),
+              SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2))
+                  ],
+                ),
+                child: TextFormField(
+                  controller: _descuentoController,
+                  decoration: InputDecoration(
+                    labelText: 'Descuento (%)',
+                    labelStyle:
+                        TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(fontSize: 14, color: Colors.black87),
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Ingrese un descuento';
+                    final descuento = double.tryParse(value);
+                    if (descuento == null ||
+                        descuento <= 0 ||
+                        descuento > 100) {
+                      return 'El descuento debe estar entre 0 y 100';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              SizedBox(height: 12),
               if (_precioConDescuento != null)
                 Text(
-                    "Precio con Descuento: \$${_precioConDescuento!.toStringAsFixed(2)}"),
-              SizedBox(height: 15),
-              ListTile(
-                title: Text(
-                    'Fecha Inicio: ${_fechaInicio != null ? DateFormat('dd/MM/yyyy HH:mm').format(_fechaInicio!) : "No seleccionada"}'),
-                trailing: Icon(Icons.calendar_today),
-                onTap: _seleccionarFechaInicio,
+                  "Precio con Descuento: \$${_precioConDescuento!.toStringAsFixed(2)}",
+                  style: TextStyle(fontSize: 14, color: Colors.black87),
+                ),
+              SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2))
+                  ],
+                ),
+                child: ListTile(
+                  title: Text(
+                    'Fecha Inicio: ${_fechaInicio != null ? DateFormat('dd/MM/yyyy HH:mm').format(_fechaInicio!) : "No seleccionada"}',
+                    style: TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  trailing: Icon(Icons.calendar_today, color: Colors.grey[600]),
+                  onTap: _seleccionarFechaInicio,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                ),
               ),
-              SizedBox(height: 15),
-              ListTile(
-                title: Text(
-                    'Fecha Fin: ${_fechaFin != null ? DateFormat('dd/MM/yyyy HH:mm').format(_fechaFin!) : "No seleccionada"}'),
-                trailing: Icon(Icons.calendar_today),
-                onTap: _seleccionarFechaFin,
+              SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2))
+                  ],
+                ),
+                child: ListTile(
+                  title: Text(
+                    'Fecha Fin: ${_fechaFin != null ? DateFormat('dd/MM/yyyy HH:mm').format(_fechaFin!) : "No seleccionada"}',
+                    style: TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  trailing: Icon(Icons.calendar_today, color: Colors.grey[600]),
+                  onTap: _seleccionarFechaFin,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                ),
               ),
               if (_fechaInicio != null &&
                   _fechaFin != null &&
@@ -175,7 +262,7 @@ class _EditarOfertaScreenState extends State<EditarOfertaScreen> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     'La fecha fin debe ser posterior a la fecha inicio',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(color: Colors.red[600], fontSize: 12),
                   ),
                 ),
             ],

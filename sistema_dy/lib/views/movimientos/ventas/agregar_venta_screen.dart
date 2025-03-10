@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'cajas/cajas_api.dart';
@@ -6,7 +5,6 @@ import 'cajas/cajas_widgets.dart';
 import 'venta_api.dart';
 import 'venta_widgets.dart';
 import 'auth_helper.dart';
-import '../../navigation_bar.dart';
 import 'dart:developer' as developer;
 import 'dart:async';
 
@@ -23,36 +21,20 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   final TextEditingController _notasController = TextEditingController();
   final TextEditingController _descuentoController = TextEditingController();
   final TextEditingController _subtotalController = TextEditingController();
+  final TextEditingController _subtotalConDescuentoController =
+      TextEditingController();
   final TextEditingController _ivaController = TextEditingController();
+  final TextEditingController _totalSinDescuentoController =
+      TextEditingController();
   final TextEditingController _totalController = TextEditingController();
   final TextEditingController _busquedaProductoController =
-      TextEditingController();
-
-  // Controladores para DTE (sin cambios)
-  final TextEditingController _facturaController = TextEditingController();
-  final TextEditingController _comprobanteCreditoFiscalController =
-      TextEditingController();
-  final TextEditingController _facturaExportacionController =
-      TextEditingController();
-  final TextEditingController _notaCreditoController = TextEditingController();
-  final TextEditingController _notaDebitoController = TextEditingController();
-  final TextEditingController _notaRemisionController = TextEditingController();
-  final TextEditingController _comprobanteLiquidacionController =
-      TextEditingController();
-  final TextEditingController _comprobanteRetencionController =
-      TextEditingController();
-  final TextEditingController _documentoContableLiquidacionController =
-      TextEditingController();
-  final TextEditingController _comprobanteDonacionController =
-      TextEditingController();
-  final TextEditingController _facturaSujetoExcluidoController =
       TextEditingController();
 
   List<dynamic> _clientes = [];
   List<dynamic> _productos = [];
   Map<String, dynamic>? _clienteSeleccionado;
   Map<String, dynamic>? _loggedInUser;
-  String? _tipoFactura;
+  String? _tipoDte = 'Factura';
   String? _metodoPago;
   List<Map<String, dynamic>> _carrito = [];
   int? _aperturaId;
@@ -66,9 +48,7 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     _initialize();
     _clienteController.addListener(_buscarClientes);
     _descuentoController.addListener(_calcularTotal);
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      setState(() {}); // Actualiza el tiempo activo cada segundo
-    });
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) => setState(() {}));
   }
 
   Future<void> _initialize() async {
@@ -91,8 +71,7 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   Future<void> _loadUserAndCheckApertura() async {
     _loggedInUser = await AuthHelper.getLoggedInUser();
     if (_loggedInUser == null || _loggedInUser!['id'] == null) {
-      developer.log(
-          'Usuario no logueado o sin ID válido en usuarios: $_loggedInUser');
+      developer.log('Usuario no logueado o sin ID válido: $_loggedInUser');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Por favor, inicie sesión con un usuario válido')),
@@ -101,17 +80,14 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     }
     try {
       final aperturas = await CajasApi().getAperturasActivas();
-      developer.log('Aperturas activas: $aperturas');
-      if (aperturas.isEmpty) {
+      if (aperturas.isEmpty)
         _mostrarModalApertura();
-      } else {
+      else
         setState(() => _aperturaId = aperturas[0]['id'] as int);
-      }
     } catch (e) {
       developer.log('Error al verificar aperturas: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al verificar aperturas: $e')),
-      );
+          SnackBar(content: Text('Error al verificar aperturas: $e')));
       _mostrarModalApertura();
     }
   }
@@ -134,21 +110,22 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   Future<void> _cargarProductos() async {
     try {
       final productos = await VentaApi().searchProductos();
-      developer.log('Productos cargados al inicio: $productos');
       setState(() => _productos = productos);
     } catch (e) {
       developer.log('Error al cargar productos: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar productos: $e')),
-      );
+          SnackBar(content: Text('Error al cargar productos: $e')));
     }
   }
 
   void _buscarClientes() async {
-    if (_clienteSeleccionado != null) return;
     final query = _clienteController.text.trim();
     if (query.isEmpty) {
-      setState(() => _clientes = []);
+      setState(() {
+        _clientes = [];
+        _clienteSeleccionado = null;
+      });
+      _calcularTotal();
       return;
     }
     try {
@@ -156,18 +133,42 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
       setState(() => _clientes = clientes);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al buscar clientes: $e')),
-      );
+          SnackBar(content: Text('Error al buscar clientes: $e')));
     }
   }
 
-  void _seleccionarCliente(Map<String, dynamic> cliente) {
-    setState(() {
-      _clienteSeleccionado = cliente;
-      _clienteController.text = cliente['nombre'];
-      _clientes = [];
-    });
+  void _seleccionarCliente(Map<String, dynamic>? cliente) {
+    developer.log('Cliente recibido: $cliente');
+    if (cliente == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: Cliente es nulo')),
+      );
+      setState(() {
+        _clienteSeleccionado = null;
+        _clienteController.text = '';
+        _clientes = [];
+      });
+    } else {
+      final nombre = cliente['nombre']?.toString() ?? 'Cliente Sin Nombre';
+      setState(() {
+        _clienteSeleccionado = cliente;
+        _clienteController.text = nombre;
+        _clientes = [];
+      });
+    }
     FocusScope.of(context).unfocus();
+    _calcularTotal();
+  }
+
+  void _mostrarModalClientePaso() {
+    showDialog(
+      context: context,
+      builder: (context) => ClientePasoModal(
+        onClienteAgregado: (cliente) {
+          _seleccionarCliente(cliente);
+        },
+      ),
+    );
   }
 
   void _agregarAlCarrito(Map<String, dynamic> producto) {
@@ -233,17 +234,29 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     double descuento = double.tryParse(_descuentoController.text) ?? 0.0;
     if (descuento < 0 || descuento > 100) descuento = 0.0;
     double subtotalConDescuento = subtotal * (1 - descuento / 100);
-    double iva = subtotalConDescuento * 0.13;
-    double total = subtotalConDescuento + iva;
+    double ivaOriginal = subtotal *
+        0.13; // IVA sobre el subtotal original para Total sin descuento
+    double ivaConDescuento =
+        subtotalConDescuento * 0.13; // IVA sobre el subtotal con descuento
+    double totalSinDescuento = subtotal + ivaOriginal;
+    double totalConDescuento = subtotalConDescuento + ivaConDescuento;
 
     setState(() {
       _subtotalController.text = subtotal.toStringAsFixed(2);
-      _ivaController.text = iva.toStringAsFixed(2);
-      _totalController.text = total.toStringAsFixed(2);
+      _subtotalConDescuentoController.text =
+          subtotalConDescuento.toStringAsFixed(2);
+      _ivaController.text = ivaConDescuento
+          .toStringAsFixed(2); // IVA sobre Subtotal con Descuento
+      _totalSinDescuentoController.text = totalSinDescuento.toStringAsFixed(2);
+      _totalController.text = totalConDescuento.toStringAsFixed(2);
     });
   }
 
   void _procesarVenta() async {
+    if (_clienteSeleccionado == null) {
+      _mostrarModalClientePaso();
+      return;
+    }
     if (_formKey.currentState!.validate() &&
         _carrito.isNotEmpty &&
         _aperturaId != null) {
@@ -255,9 +268,8 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
           _loggedInUser!['tipo_cuenta'] != 'Root') {
         final result = await showDialog<Map<String, dynamic>>(
           context: context,
-          builder: (context) => AutorizacionDescuentoModal(
-            onAutorizado: (result) {},
-          ),
+          builder: (context) =>
+              AutorizacionDescuentoModal(onAutorizado: (result) {}),
         );
         if (result == null || !result['autorizado']) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -271,46 +283,24 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
       final venta = {
         'cliente_id': _clienteSeleccionado!['idCliente'],
         'empleado_id': _loggedInUser!['empleado_id'] as int,
-        'tipo_factura': _tipoFactura ?? 'Consumidor Final',
+        'tipo_dte': _tipoDte ?? 'Factura',
         'metodo_pago': _metodoPago ?? 'Efectivo',
         'total': double.parse(_totalController.text),
         'descuento': descuento,
         'descripcion_compra': _notasController.text,
         'productos': _carrito,
         'apertura_id': _aperturaId,
-        if (_facturaController.text.isNotEmpty)
-          'factura': _facturaController.text,
-        if (_comprobanteCreditoFiscalController.text.isNotEmpty)
-          'comprobante_credito_fiscal':
-              _comprobanteCreditoFiscalController.text,
-        if (_facturaExportacionController.text.isNotEmpty)
-          'factura_exportacion': _facturaExportacionController.text,
-        if (_notaCreditoController.text.isNotEmpty)
-          'nota_credito': _notaCreditoController.text,
-        if (_notaDebitoController.text.isNotEmpty)
-          'nota_debito': _notaDebitoController.text,
-        if (_notaRemisionController.text.isNotEmpty)
-          'nota_remision': _notaRemisionController.text,
-        if (_comprobanteLiquidacionController.text.isNotEmpty)
-          'comprobante_liquidacion': _comprobanteLiquidacionController.text,
-        if (_comprobanteRetencionController.text.isNotEmpty)
-          'comprobante_retencion': _comprobanteRetencionController.text,
-        if (_documentoContableLiquidacionController.text.isNotEmpty)
-          'documento_contable_liquidacion':
-              _documentoContableLiquidacionController.text,
-        if (_comprobanteDonacionController.text.isNotEmpty)
-          'comprobante_donacion': _comprobanteDonacionController.text,
-        if (_facturaSujetoExcluidoController.text.isNotEmpty)
-          'factura_sujeto_excluido': _facturaSujetoExcluidoController.text,
         if (codigoAutorizacion != null)
           'codigo_autorizacion': codigoAutorizacion,
       };
 
       try {
-        await VentaApi().addVenta(venta);
+        final response = await VentaApi().addVenta(venta);
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Venta procesada correctamente')),
+          SnackBar(
+              content: Text(
+                  'Venta procesada correctamente: ${response['codigo_venta']}')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -320,51 +310,7 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                'Seleccione un cliente, añada productos y asegure una apertura activa')),
-      );
-    }
-  }
-
-  Future<bool> _onWillPop() async {
-    if (_aperturaId != null) {
-      final confirmarCierre = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('¿Cerrar Caja?'),
-          content: const Text(
-              'Hay una caja abierta. ¿Desea cerrarla ahora o dejarla abierta?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Dejar Abierta'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await _mostrarModalCierreCaja();
-                Navigator.pop(context, true);
-              },
-              child: const Text('Cerrar Caja'),
-            ),
-          ],
-        ),
-      );
-      return confirmarCierre ?? false;
-    }
-    return true;
-  }
-
-  Future<void> _mostrarModalCierreCaja() async {
-    if (_aperturaId != null) {
-      showDialog(
-        context: context,
-        builder: (context) => CierreCajaModal(
-          aperturaId: _aperturaId!,
-          onCierreConfirmado: () {
-            setState(() => _aperturaId = null);
-            Navigator.pop(context);
-          },
-        ),
+            content: Text('Añada productos y asegure una apertura activa')),
       );
     }
   }
@@ -415,24 +361,51 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            SizedBox(
+                              child: ElevatedButton(
+                                onPressed: _mostrarModalClientePaso,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      Colors.green.shade700, // Cambio de color
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  elevation: 4,
+                                ),
+                                child: const Text(' Cliente de Paso',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
                             const Text('Cliente',
                                 style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 10),
                             SizedBox(
                               width: double.infinity,
                               child: TextFormField(
                                 controller: _clienteController,
                                 focusNode: _clienteFocusNode,
-                                decoration: const InputDecoration(
-                                  labelText: 'Buscar Cliente',
+                                decoration: InputDecoration(
+                                  labelText: 'Buscar Cliente (opcional)',
                                   prefixIcon: Icon(Icons.person),
+                                  suffixIcon: _clienteSeleccionado != null
+                                      ? IconButton(
+                                          icon: Icon(Icons.clear),
+                                          onPressed: () {
+                                            setState(() {
+                                              _clienteSeleccionado = null;
+                                              _clienteController.clear();
+                                              _clientes = [];
+                                            });
+                                            _calcularTotal();
+                                          },
+                                        )
+                                      : null,
                                   border: OutlineInputBorder(),
                                 ),
                                 onChanged: (value) => _buscarClientes(),
-                                validator: (value) =>
-                                    _clienteSeleccionado == null
-                                        ? 'Seleccione un cliente'
-                                        : null,
                               ),
                             ),
                             if (_clientes.isNotEmpty)
@@ -461,21 +434,29 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: DropdownButtonFormField<String>(
-                                value: _tipoFactura,
+                                value: _tipoDte,
                                 decoration: const InputDecoration(
-                                  labelText: 'Tipo de Factura',
+                                  labelText: 'Tipo de DTE',
                                   border: OutlineInputBorder(),
                                 ),
                                 items: [
-                                  'Consumidor Final',
+                                  'Factura',
                                   'Crédito Fiscal',
-                                  'Ticket'
+                                  'Factura Exportación',
+                                  'Nota Crédito',
+                                  'Nota Débito',
+                                  'Nota Remisión',
+                                  'Comprobante Liquidación',
+                                  'Comprobante Retención',
+                                  'Doc. Contable Liquidación',
+                                  'Comprobante Donación',
+                                  'Factura Sujeto Excluido',
                                 ]
                                     .map((tipo) => DropdownMenuItem(
                                         value: tipo, child: Text(tipo)))
                                     .toList(),
                                 onChanged: (value) =>
-                                    setState(() => _tipoFactura = value),
+                                    setState(() => _tipoDte = value),
                               ),
                             ),
                             const SizedBox(height: 10),
@@ -565,6 +546,80 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
               ),
             ),
           ),
+
+          // Centro: Buscar Producto y Productos
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextField(
+                      controller: _busquedaProductoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Buscar Producto',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) async {
+                        final productos =
+                            await VentaApi().searchProductos(nombre: value);
+                        setState(() => _productos = productos);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.all(8.0),
+                    height: 400,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Productos',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: _productos.isEmpty &&
+                                  _busquedaProductoController.text.isEmpty
+                              ? const Center(
+                                  child: Text('Cargando productos...'))
+                              : _productos.isEmpty
+                                  ? const Center(
+                                      child:
+                                          Text('No hay productos disponibles'))
+                                  : ListView.builder(
+                                      itemCount: _productos.length,
+                                      itemBuilder: (context, index) {
+                                        final producto = _productos[index];
+                                        return Card(
+                                          elevation: 0,
+                                          child: ListTile(
+                                            dense: true,
+                                            title: Text(producto['nombre']),
+                                            subtitle: Text(
+                                                'Precio: \$${producto['precio_venta']} | Stock: ${producto['stock_existencia']}'),
+                                            onTap: () =>
+                                                _agregarAlCarrito(producto),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Derecha: Carrito y Cálculos
           Expanded(
             flex: 2,
             child: Padding(
@@ -644,6 +699,18 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: TextFormField(
+                      controller: _subtotalConDescuentoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Subtotal con Descuento',
+                        border: OutlineInputBorder(),
+                      ),
+                      readOnly: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextFormField(
                       controller: _ivaController,
                       decoration: const InputDecoration(
                           labelText: 'IVA (13%)', border: OutlineInputBorder()),
@@ -654,9 +721,21 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: TextFormField(
-                      controller: _totalController,
+                      controller: _totalSinDescuentoController,
                       decoration: const InputDecoration(
                           labelText: 'Total', border: OutlineInputBorder()),
+                      readOnly: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextFormField(
+                      controller: _totalController,
+                      decoration: const InputDecoration(
+                        labelText: 'Total con Descuento',
+                        border: OutlineInputBorder(),
+                      ),
                       readOnly: true,
                     ),
                   ),
@@ -682,174 +761,24 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextField(
-                      controller: _busquedaProductoController,
-                      decoration: const InputDecoration(
-                        labelText: 'Buscar Producto',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (value) async {
-                        final productos =
-                            await VentaApi().searchProductos(nombre: value);
-                        setState(() => _productos = productos);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.all(8.0),
-                    height: 300,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Productos',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: _productos.isEmpty &&
-                                  _busquedaProductoController.text.isEmpty
-                              ? const Center(
-                                  child: Text('Cargando productos...'))
-                              : _productos.isEmpty
-                                  ? const Center(
-                                      child:
-                                          Text('No hay productos disponibles'))
-                                  : ListView.builder(
-                                      itemCount: _productos.length,
-                                      itemBuilder: (context, index) {
-                                        final producto = _productos[index];
-                                        return Card(
-                                          elevation: 0,
-                                          child: ListTile(
-                                            dense: true,
-                                            title: Text(producto['nombre']),
-                                            subtitle: Text(
-                                                'Precio: \$${producto['precio_venta']} | Stock: ${producto['stock_existencia']}'),
-                                            onTap: () =>
-                                                _agregarAlCarrito(producto),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.all(8.0),
-                    height: 200,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Documentos Tributarios (Opcional)',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _facturaController,
-                            decoration: const InputDecoration(
-                                labelText: 'Factura',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _comprobanteCreditoFiscalController,
-                            decoration: const InputDecoration(
-                                labelText: 'Crédito Fiscal',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _facturaExportacionController,
-                            decoration: const InputDecoration(
-                                labelText: 'Factura Exportación',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _notaCreditoController,
-                            decoration: const InputDecoration(
-                                labelText: 'Nota Crédito',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _notaDebitoController,
-                            decoration: const InputDecoration(
-                                labelText: 'Nota Débito',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _notaRemisionController,
-                            decoration: const InputDecoration(
-                                labelText: 'Nota Remisión',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _comprobanteLiquidacionController,
-                            decoration: const InputDecoration(
-                                labelText: 'Comprobante Liquidación',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _comprobanteRetencionController,
-                            decoration: const InputDecoration(
-                                labelText: 'Comprobante Retención',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _documentoContableLiquidacionController,
-                            decoration: const InputDecoration(
-                                labelText: 'Doc. Contable Liquidación',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _comprobanteDonacionController,
-                            decoration: const InputDecoration(
-                                labelText: 'Comprobante Donación',
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 5),
-                          TextFormField(
-                            controller: _facturaSujetoExcluidoController,
-                            decoration: const InputDecoration(
-                                labelText: 'Factura Sujeto Excluido',
-                                border: OutlineInputBorder()),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
+  }
+
+  Future<void> _mostrarModalCierreCaja() async {
+    if (_aperturaId != null) {
+      showDialog(
+        context: context,
+        builder: (context) => CierreCajaModal(
+          aperturaId: _aperturaId!,
+          onCierreConfirmado: () {
+            setState(() => _aperturaId = null);
+            Navigator.pop(context);
+          },
+        ),
+      );
+    }
   }
 
   @override
@@ -860,20 +789,11 @@ class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
     _notasController.dispose();
     _descuentoController.dispose();
     _subtotalController.dispose();
+    _subtotalConDescuentoController.dispose();
     _ivaController.dispose();
+    _totalSinDescuentoController.dispose();
     _totalController.dispose();
     _busquedaProductoController.dispose();
-    _facturaController.dispose();
-    _comprobanteCreditoFiscalController.dispose();
-    _facturaExportacionController.dispose();
-    _notaCreditoController.dispose();
-    _notaDebitoController.dispose();
-    _notaRemisionController.dispose();
-    _comprobanteLiquidacionController.dispose();
-    _comprobanteRetencionController.dispose();
-    _documentoContableLiquidacionController.dispose();
-    _comprobanteDonacionController.dispose();
-    _facturaSujetoExcluidoController.dispose();
     super.dispose();
   }
 }

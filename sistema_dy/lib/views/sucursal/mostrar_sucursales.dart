@@ -13,9 +13,311 @@ class _MostrarSucursalesState extends State<MostrarSucursales> {
   final TextEditingController _searchController = TextEditingController();
   List<dynamic> sucursalesFiltradas = [];
 
+   final List<String> departamentos = [
+    'Ahuachapán',
+    'Cabañas',
+    'Chalatenango',
+    'Cuscatlán',
+    'La Libertad',
+    'La Paz',
+    'La Unión',
+    'Morazán',
+    'San Miguel',
+    'San Salvador',
+    'San Vicente',
+    'Santa Ana',
+    'Sonsonate',
+    'Usulután'
+  ];
+
+  final Map<String, List<String>> ciudadesPorDepartamento = {
+    'Ahuachapán': [
+      'Ahuachapán',
+      'Apaneca',
+      'Atiquizaya',
+      'Concepción de Ataco',
+      'El Refugio',
+      'Guaymango',
+      'Jujutla',
+      'San Francisco Menéndez',
+      'San Lorenzo',
+      'San Pedro Puxtla',
+      'Tacuba',
+      'Turín'
+    ],
+    'Cabañas': [
+      'Sensuntepeque',
+      'Cinquera',
+      'Dolores',
+      'Guacotecti',
+      'Ilobasco',
+      'Jutiapa',
+      'San Isidro',
+      'Tejutepeque',
+      'Victoria'
+    ],
+    'Chalatenango': [
+      'Chalatenango',
+      'Agua Caliente',
+      'Arcatao',
+      'Azacualpa',
+      'Cancasque',
+      'Comalapa',
+      'Concepción Quezaltepeque',
+      'Dulce Nombre de María',
+      'El Carrizal',
+      'El Paraíso',
+      'La Laguna',
+      'La Palma',
+      'La Reina',
+      'Las Vueltas',
+      'Nombre de Jesús',
+      'Nueva Concepción',
+      'Nueva Trinidad',
+      'Ojos de Agua',
+      'Potonico',
+      'San Antonio de La Cruz',
+      'San Antonio Los Ranchos',
+      'San Fernando',
+      'San Francisco Lempa',
+      'San Francisco Morazán',
+      'San Ignacio',
+      'San Isidro Labrador',
+      'San Luis del Carmen',
+      'San Miguel de Mercedes',
+      'San Rafael',
+      'Santa Rita',
+      'Tejutla'
+    ],
+    'Cuscatlán': [
+      'Cojutepeque',
+      'Candelaria',
+      'El Carmen',
+      'El Rosario',
+      'Monte San Juan',
+      'Oratorio de Concepción',
+      'San Bartolomé Perulapía',
+      'San Cristóbal',
+      'San José Guayabal',
+      'San Pedro Perulapán',
+      'San Rafael Cedros',
+      'San Ramón',
+      'Santa Cruz Analquito',
+      'Santa Cruz Michapa',
+      'Suchitoto',
+      'Tenancingo'
+    ],
+    'La Libertad': [
+      'Santa Tecla',
+      'Antiguo Cuscatlán',
+      'Chiltiupán',
+      'Ciudad Arce',
+      'Colón',
+      'Comasagua',
+      'Huizúcar',
+      'Jayaque',
+      'Jicalapa',
+      'La Libertad',
+      'Nuevo Cuscatlán',
+      'Quezaltepeque',
+      'San José Villanueva',
+      'San Juan Opico',
+      'San Matías',
+      'San Pablo Tacachico',
+      'Talnique',
+      'Tamanique',
+      'Teotepeque',
+      'Zaragoza'
+    ],
+    'La Paz': [
+      'Zacatecoluca',
+      'Cuyultitán',
+      'El Rosario',
+      'Jerusalén',
+      'Mercedes La Ceiba',
+      'Olocuilta',
+      'Paraíso de Osorio',
+      'San Antonio Masahuat',
+      'San Emigdio',
+      'San Francisco Chinameca',
+      'San Juan Nonualco',
+      'San Juan Talpa',
+      'San Juan Tepezontes',
+      'San Luis La Herradura',
+      'San Luis Talpa',
+      'San Miguel Tepezontes',
+      'San Pedro Masahuat',
+      'San Pedro Nonualco',
+      'San Rafael Obrajuelo',
+      'Santa María Ostuma',
+      'Santiago Nonualco',
+      'Tapalhuaca'
+    ],
+    'La Unión': [
+      'La Unión',
+      'Anamorós',
+      'Bolívar',
+      'Concepción de Oriente',
+      'Conchagua',
+      'El Carmen',
+      'El Sauce',
+      'Intipucá',
+      'Lislique',
+      'Meanguera del Golfo',
+      'Nueva Esparta',
+      'Pasaquina',
+      'Polorós',
+      'San Alejo',
+      'San José',
+      'Santa Rosa de Lima',
+      'Yayantique',
+      'Yucuaiquín'
+    ],
+    'Morazán': [
+      'San Francisco Gotera',
+      'Arambala',
+      'Cacaopera',
+      'Chilanga',
+      'Corinto',
+      'Delicias de Concepción',
+      'El Divisadero',
+      'El Rosario',
+      'Gualococti',
+      'Guatajiagua',
+      'Joateca',
+      'Jocoaitique',
+      'Meanguera',
+      'Osicala',
+      'Perquín',
+      'San Carlos',
+      'San Fernando',
+      'San Isidro',
+      'San Simón',
+      'Sensembra',
+      'Sociedad',
+      'Torola',
+      'Yamabal',
+      'Yoloaiquín'
+    ],
+    'San Miguel': [
+      'San Miguel',
+      'Carolina',
+      'Chapeltique',
+      'Chinameca',
+      'Chirilagua',
+      'Ciudad Barrios',
+      'Comacarán',
+      'El Tránsito',
+      'Lolotique',
+      'Moncagua',
+      'Nueva Guadalupe',
+      'Nuevo Edén de San Juan',
+      'Quelepa',
+      'San Antonio',
+      'San Gerardo',
+      'San Jorge',
+      'San Luis de la Reina',
+      'San Rafael Oriente',
+      'Sesori',
+      'Uluazapa'
+    ],
+    'San Salvador': [
+      'San Salvador',
+      'Aguilares',
+      'Apopa',
+      'Ayutuxtepeque',
+      'Ciudad Delgado',
+      'Cuscatancingo',
+      'El Paisnal',
+      'Guazapa',
+      'Ilopango',
+      'Mejicanos',
+      'Nejapa',
+      'Panchimalco',
+      'Rosario de Mora',
+      'San Marcos',
+      'San Martín',
+      'Santiago Texacuangos',
+      'Santo Tomás',
+      'Soyapango',
+      'Tonacatepeque'
+    ],
+    'San Vicente': [
+      'San Vicente',
+      'Apastepeque',
+      'Guadalupe',
+      'San Cayetano Istepeque',
+      'San Esteban Catarina',
+      'San Ildefonso',
+      'San Lorenzo',
+      'San Sebastián',
+      'Santa Clara',
+      'Santo Domingo',
+      'Tecoluca',
+      'Tepetitán',
+      'Verapaz'
+    ],
+    'Santa Ana': [
+      'Santa Ana',
+      'Candelaria de la Frontera',
+      'Chalchuapa',
+      'Coatepeque',
+      'El Congo',
+      'El Porvenir',
+      'Masahuat',
+      'Metapán',
+      'San Antonio Pajonal',
+      'San Sebastián Salitrillo',
+      'Santa Rosa Guachipilín',
+      'Santiago de la Frontera',
+      'Texistepeque'
+    ],
+    'Sonsonate': [
+      'Sonsonate',
+      'Acajutla',
+      'Armenia',
+      'Caluco',
+      'Cuisnahuat',
+      'Izalco',
+      'Juayúa',
+      'Nahuizalco',
+      'Nahulingo',
+      'Salcoatitán',
+      'San Antonio del Monte',
+      'San Julián',
+      'Santa Catarina Masahuat',
+      'Santo Domingo de Guzmán'
+    ],
+    'Usulután': [
+      'Usulután',
+      'Alegría',
+      'Berlín',
+      'California',
+      'Concepción Batres',
+      'El Triunfo',
+      'Ereguayquín',
+      'Estanzuelas',
+      'Jiquilisco',
+      'Jucuapa',
+      'Jucuarán',
+      'Mercedes Umaña',
+      'Nueva Granada',
+      'Ozatlán',
+      'Puerto El Triunfo',
+      'San Agustín',
+      'San Buenaventura',
+      'San Dionisio',
+      'San Francisco Javier',
+      'Santa Elena',
+      'Santa María',
+      'Santiago de María',
+      'Tecapán'
+    ],
+  };
+
   @override
   void initState() {
-    super.initState();
+    super.initState(); 
     fetchSucursales();
     _searchController.addListener(_filterSucursales);
   }
@@ -80,74 +382,126 @@ class _MostrarSucursalesState extends State<MostrarSucursales> {
   }
 
   void editSucursal(Map<String, dynamic> sucursal) {
-    TextEditingController codigoController =
-        TextEditingController(text: sucursal['codigo'] ?? '');
-    TextEditingController nombreController =
-        TextEditingController(text: sucursal['nombre'] ?? '');
-    TextEditingController ciudadController =
-        TextEditingController(text: sucursal['ciudad'] ?? '');
-    TextEditingController departamentoController =
-        TextEditingController(text: sucursal['departamento'] ?? '');
-    TextEditingController paisController =
-        TextEditingController(text: sucursal['pais'] ?? '');
-    String estadoSeleccionado = sucursal['estado'] ?? 'Inactivo';
+  TextEditingController codigoController =
+      TextEditingController(text: sucursal['codigo'] ?? '');
+  TextEditingController nombreController =
+      TextEditingController(text: sucursal['nombre'] ?? '');
+  TextEditingController direccionController =
+      TextEditingController(text: sucursal['direccion'] ?? '');
+  TextEditingController telefonoController =
+      TextEditingController(text: sucursal['telefono'] ?? '');
+  TextEditingController gmailController =
+      TextEditingController(text: sucursal['gmail'] ?? '');
+  TextEditingController paisController =
+      TextEditingController(text: sucursal['pais'] ?? '');
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Editar Sucursal',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTextField('Código', Icons.code, codigoController),
-                _buildTextField('Nombre', Icons.business, nombreController),
-                _buildTextField(
-                    'Ciudad', Icons.location_city, ciudadController),
-                _buildTextField(
-                    'Departamento', Icons.map, departamentoController),
-                _buildTextField('País', Icons.public, paisController),
-                _buildDropdown('Estado', Icons.toggle_on, estadoSeleccionado,
-                    ["Activo", "Inactivo"], (value) {
+  String estadoSeleccionado = sucursal['estado'] ?? 'Inactivo';
+  String departamentoSeleccionado = sucursal['departamento'] ?? '';
+  String ciudadSeleccionada = sucursal['ciudad'] ?? '';
+
+  // Lista de ciudades según el departamento seleccionado
+  List<String> ciudadesDisponibles = ciudadesPorDepartamento[departamentoSeleccionado] ?? [];
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text(
+          'Editar Sucursal',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildTextField('Código', Icons.code, codigoController),
+              _buildTextField('Nombre', Icons.business, nombreController),
+              // Dropdown para seleccionar el departamento
+              DropdownButtonFormField<String>(
+                value: departamentoSeleccionado,
+                decoration: InputDecoration(
+                  labelText: 'Departamento',
+                  icon: Icon(Icons.map),
+                ),
+                items: departamentos.map((String departamento) {
+                  return DropdownMenuItem<String>(
+                    value: departamento,
+                    child: Text(departamento),
+                  );
+                }).toList(),
+                onChanged: (String? nuevoDepartamento) {
                   setState(() {
-                    estadoSeleccionado = value!;
+                    departamentoSeleccionado = nuevoDepartamento!;
+                    // Actualizar la lista de ciudades según el departamento seleccionado
+                    ciudadesDisponibles = ciudadesPorDepartamento[departamentoSeleccionado] ?? [];
+                    // Reiniciar la ciudad seleccionada si el departamento cambia
+                    ciudadSeleccionada = '';
                   });
-                }),
-              ],
-            ),
+                },
+              ),
+              // Dropdown para seleccionar la ciudad
+              DropdownButtonFormField<String>(
+                value: ciudadSeleccionada.isNotEmpty ? ciudadSeleccionada : null,
+                decoration: InputDecoration(
+                  labelText: 'Ciudad',
+                  icon: Icon(Icons.location_city),
+                ),
+                items: ciudadesDisponibles.map((String ciudad) {
+                  return DropdownMenuItem<String>(
+                    value: ciudad,
+                    child: Text(ciudad),
+                  );
+                }).toList(),
+                onChanged: (String? nuevaCiudad) {
+                  setState(() {
+                    ciudadSeleccionada = nuevaCiudad!;
+                  });
+                },
+              ),
+              _buildTextField('Dirección', Icons.business, direccionController),
+              _buildTextField('Teléfono', Icons.business, telefonoController),
+              _buildTextField('Correo Electrónico', Icons.business, gmailController),
+              _buildTextField('País', Icons.public, paisController),
+              _buildDropdown('Estado', Icons.toggle_on, estadoSeleccionado,
+                  ["Activo", "Inactivo"], (value) {
+                setState(() {
+                  estadoSeleccionado = value!;
+                });
+              }),
+            ],
           ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                updateSucursal(
-                  sucursal['id'],
-                  codigoController.text,
-                  nombreController.text,
-                  ciudadController.text,
-                  departamentoController.text,
-                  paisController.text,
-                  estadoSeleccionado,
-                );
-                Navigator.pop(context);
-              },
-              child: const Text('Guardar cambios'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              updateSucursal(
+                sucursal['id'],
+                codigoController.text,
+                nombreController.text,
+                ciudadSeleccionada,
+                direccionController.text,
+                departamentoSeleccionado,
+                telefonoController.text,
+                gmailController.text,
+                paisController.text,
+                estadoSeleccionado,
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('Guardar cambios'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   Future<void> updateSucursal(int id, String codigo, String nombre,
-      String ciudad, String departamento, String pais, String estado) async {
+      String ciudad, String direccion,String departamento, String telefono, String gmail,String pais, String estado) async {
     final response = await http.put(
       Uri.parse('http://localhost:3000/api/sucursal/$id'),
       headers: {"Content-Type": "application/json"},
@@ -155,7 +509,10 @@ class _MostrarSucursalesState extends State<MostrarSucursales> {
         "codigo": codigo,
         "nombre": nombre,
         "ciudad": ciudad,
+        "direccion": direccion,
         "departamento": departamento,
+        "telefono": telefono,
+        "gmail": gmail,
         "pais": pais,
         "estado": estado,
       }),
@@ -284,10 +641,6 @@ class _MostrarSucursalesState extends State<MostrarSucursales> {
                         ),
                         columns: const [
                           DataColumn(
-                              label: Text('ID',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(
                               label: Text('Código',
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold))),
@@ -300,7 +653,19 @@ class _MostrarSucursalesState extends State<MostrarSucursales> {
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold))),
                           DataColumn(
+                              label: Text('Dirección',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
                               label: Text('Departamento',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text('Telefono',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(
+                              label: Text('Correo Electronico',
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold))),
                           DataColumn(
@@ -318,12 +683,14 @@ class _MostrarSucursalesState extends State<MostrarSucursales> {
                         ],
                         rows: sucursalesFiltradas.map((sucursal) {
                           return DataRow(cells: [
-                            DataCell(Text(sucursal['id'].toString())),
                             DataCell(Text(sucursal['codigo'] ?? 'Sin código')),
                             DataCell(Text(sucursal['nombre'] ?? 'Sin nombre')),
                             DataCell(Text(sucursal['ciudad'] ?? 'Sin ciudad')),
+                            DataCell(Text(sucursal['direccion'] ?? 'Sin dirección')),
                             DataCell(Text(sucursal['departamento'] ??
                                 'Sin departamento')),
+                            DataCell(Text(sucursal['telefono'] ?? 'Sin teléfono')),
+                            DataCell(Text(sucursal['gmail'] ?? 'Sin gmail')),
                             DataCell(Text(sucursal['pais'] ?? 'Sin país')),
                             DataCell(
                               Container(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'venta_api.dart';
+import 'dart:developer' as developer;
 
 class HistorialCambiosDialog extends StatelessWidget {
   final int ventaId;
@@ -16,9 +17,8 @@ class HistorialCambiosDialog extends StatelessWidget {
       content: FutureBuilder<List<dynamic>>(
         future: VentaApi().getHistorial(ventaId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return Center(child: CircularProgressIndicator());
-          }
           if (snapshot.hasError) return Text('Error: ${snapshot.error}');
           if (!snapshot.hasData || snapshot.data!.isEmpty)
             return Text('No hay cambios registrados');
@@ -65,7 +65,7 @@ class HistorialCambiosDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context), child: Text('Cerrar')),
+            onPressed: () => Navigator.pop(context), child: Text('Cerrar'))
       ],
     );
   }
@@ -89,17 +89,15 @@ class DetalleVentaDialog extends StatelessWidget {
     return AlertDialog(
       title: Text('Detalle de Venta - ${venta['codigo_venta']}'),
       content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.8, // Ancho adaptable
+        width: MediaQuery.of(context).size.width * 0.8,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Información General
               _buildSectionTitle('Información General'),
               _buildDetailRow('Código:', venta['codigo_venta'] ?? 'N/A'),
               _buildDetailRow('Fecha:', fechaVenta),
-              _buildDetailRow(
-                  'Tipo de Factura:', venta['tipo_factura'] ?? 'N/A'),
+              _buildDetailRow('Tipo de DTE:', venta['tipo_dte'] ?? 'N/A'),
               _buildDetailRow('Método de Pago:', venta['metodo_pago'] ?? 'N/A'),
               _buildDetailRow('Total:', '\$${total.toStringAsFixed(2)}'),
               _buildDetailRow('Descuento:', '${descuento.toStringAsFixed(2)}%'),
@@ -107,8 +105,6 @@ class DetalleVentaDialog extends StatelessWidget {
                   venta['descripcion_compra'] ?? 'Sin descripción'),
               _buildDetailRow('Empleado:', venta['empleado_nombre'] ?? 'N/A'),
               SizedBox(height: 16),
-
-              // Detalles del Cliente
               _buildSectionTitle('Cliente'),
               _buildDetailRow('Nombre:', venta['cliente_nombre'] ?? 'N/A'),
               _buildDetailRow(
@@ -116,8 +112,6 @@ class DetalleVentaDialog extends StatelessWidget {
               _buildDetailRow('DUI:', venta['dui'] ?? 'Sin DUI'),
               _buildDetailRow('NIT:', venta['nit'] ?? 'Sin NIT'),
               SizedBox(height: 16),
-
-              // Detalles de Productos
               _buildSectionTitle('Productos'),
               ...(venta['productos'] as List<dynamic>).map((p) => Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
@@ -150,39 +144,13 @@ class DetalleVentaDialog extends StatelessWidget {
                       ],
                     ),
                   )),
-
-              // Documentos Asociados
-              _buildSectionTitle('Documentos Asociados'),
-              _buildDetailRow('Factura:', venta['factura'] ?? 'No disponible'),
-              _buildDetailRow('Comprobante Crédito Fiscal:',
-                  venta['comprobante_credito_fiscal'] ?? 'No disponible'),
-              _buildDetailRow('Factura Exportación:',
-                  venta['factura_exportacion'] ?? 'No disponible'),
-              _buildDetailRow(
-                  'Nota Crédito:', venta['nota_credito'] ?? 'No disponible'),
-              _buildDetailRow(
-                  'Nota Débito:', venta['nota_debito'] ?? 'No disponible'),
-              _buildDetailRow(
-                  'Nota Remisión:', venta['nota_remision'] ?? 'No disponible'),
-              _buildDetailRow('Comprobante Liquidación:',
-                  venta['comprobante_liquidacion'] ?? 'No disponible'),
-              _buildDetailRow('Comprobante Retención:',
-                  venta['comprobante_retencion'] ?? 'No disponible'),
-              _buildDetailRow('Documento Contable:',
-                  venta['documento_contable_liquidacion'] ?? 'No disponible'),
-              _buildDetailRow('Comprobante Donación:',
-                  venta['comprobante_donacion'] ?? 'No disponible'),
-              _buildDetailRow('Factura Sujeto Excluido:',
-                  venta['factura_sujeto_excluido'] ?? 'No disponible'),
             ],
           ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Cerrar'),
-        ),
+            onPressed: () => Navigator.pop(context), child: Text('Cerrar'))
       ],
     );
   }
@@ -190,10 +158,8 @@ class DetalleVentaDialog extends StatelessWidget {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Text(
-        title,
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
+      child: Text(title,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -229,9 +195,8 @@ class AutorizacionDescuentoModal extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, null),
-          child: const Text('Cancelar'),
-        ),
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Cancelar')),
         ElevatedButton(
           onPressed: () async {
             try {
@@ -240,12 +205,64 @@ class AutorizacionDescuentoModal extends StatelessWidget {
               Navigator.pop(context,
                   {'autorizado': autorizado, 'codigo': _codigoController.text});
             } catch (e) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text('Error: $e')));
+            }
+          },
+          child: const Text('Autorizar'),
+        ),
+      ],
+    );
+  }
+}
+
+class ClientePasoModal extends StatelessWidget {
+  final Function(Map<String, dynamic>) onClienteAgregado;
+
+  const ClientePasoModal({required this.onClienteAgregado});
+
+  @override
+  Widget build(BuildContext context) {
+    final TextEditingController _nombreController = TextEditingController();
+    final String fechaActual = DateTime.now().toIso8601String().split('T')[0];
+
+    return AlertDialog(
+      title: const Text('Cliente de Paso'),
+      content: TextField(
+        controller: _nombreController,
+        decoration: const InputDecoration(labelText: 'Nombre del Cliente'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            final nombre = _nombreController.text.trim();
+
+            if (nombre.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Ingrese un nombre')),
+              );
+              return;
+            }
+
+            try {
+              developer.log('Llamando a addClientePaso...');
+              final cliente = await VentaApi()
+                  .addClientePaso(nombre, fecha_inicio: fechaActual);
+
+              onClienteAgregado(cliente);
+              Navigator.pop(context);
+            } catch (e) {
+              developer.log('Error en addClientePaso: $e');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Error: $e')),
               );
             }
           },
-          child: const Text('Autorizar'),
+          child: const Text('Agregar'),
         ),
       ],
     );

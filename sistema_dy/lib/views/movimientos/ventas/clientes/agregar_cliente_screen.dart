@@ -11,6 +11,7 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _direccionController = TextEditingController();
+  final TextEditingController _departamentoController = TextEditingController();
   final TextEditingController _duiController = TextEditingController();
   final TextEditingController _nitController = TextEditingController();
   final TextEditingController _registroContribuyenteController =
@@ -22,12 +23,11 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
   final TextEditingController _razonSocialController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _telefonoController = TextEditingController();
-  final TextEditingController _porcentajeRetencionController =
-      TextEditingController(text: '10.0');
-  DateTime? _fechaFin;
-  String _tipoCliente = 'Natural';
 
-  // Validación del DUI con formato automático
+  DateTime? _fechaInicio = DateTime.now();
+
+  String _tipoCliente = 'Cliente de Paso';
+
   String? _validarDUI(String? value) {
     if (value == null || value.isEmpty) return "Requerido";
     final regex = RegExp(r'^\d{8}-\d$');
@@ -53,13 +53,12 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
     }
   }
 
-  // Validación del NIT con formato automático
   String? _validarNIT(String? value) {
     if (value == null || value.isEmpty) return "Requerido";
     final nitRegex = RegExp(r'^\d{4}-\d{6}-\d{3}-\d$');
     if (!nitRegex.hasMatch(value))
       return "Formato inválido (ej. 0614-010190-123-4)";
-    return null; // No validamos el dígito verificador del NIT por simplicidad
+    return null;
   }
 
   void _formatearNIT(String value) {
@@ -76,7 +75,6 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
         TextPosition(offset: _nitController.text.length));
   }
 
-  // Validación del teléfono con formato automático
   String? _validarTelefono(String? value) {
     if (value == null || value.isEmpty) return "Requerido";
     final regex = RegExp(r'^\d{4}-\d{4}$');
@@ -91,7 +89,6 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
     }
   }
 
-  // Validación del email
   String? _validarEmail(String? value) {
     if (value == null || value.isEmpty) return "Requerido";
     final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -101,21 +98,22 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
   }
 
   void _agregarCliente() async {
-    if (_tipoCliente == 'Sujeto Excluido' && _fechaFin == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('La Fecha Fin es requerida para Sujeto Excluido')),
-      );
-      return;
-    }
     if (_formKey.currentState!.validate()) {
       final cliente = {
         'nombre': _nombreController.text,
-        'direccion': _direccionController.text,
+        'direccion': _direccionController.text.isNotEmpty
+            ? _direccionController.text
+            : null,
+        'departamento': _departamentoController.text.isNotEmpty
+            ? _departamentoController.text
+            : null,
         'dui': _duiController.text.isNotEmpty ? _duiController.text : null,
-        'nit': _nitController.text,
+        'nit': _nitController.text.isNotEmpty ? _nitController.text : null,
         'tipo_cliente': _tipoCliente,
-        'registro_contribuyente': _registroContribuyenteController.text,
+        'registro_contribuyente':
+            _registroContribuyenteController.text.isNotEmpty
+                ? _registroContribuyenteController.text
+                : null,
         'representante_legal': _representanteLegalController.text.isNotEmpty
             ? _representanteLegalController.text
             : null,
@@ -126,13 +124,12 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
         'razon_social': _razonSocialController.text.isNotEmpty
             ? _razonSocialController.text
             : null,
-        'email': _emailController.text,
-        'telefono': _telefonoController.text,
-        'fecha_inicio': DateTime.now().toIso8601String().split('T')[0],
-        'fecha_fin': _fechaFin != null
-            ? DateFormat('yyyy-MM-dd').format(_fechaFin!)
+        'email':
+            _emailController.text.isNotEmpty ? _emailController.text : null,
+        'telefono': _telefonoController.text.isNotEmpty
+            ? _telefonoController.text
             : null,
-        'porcentaje_retencion': _tipoCliente == 'Sujeto Excluido' ? 10.0 : null,
+        'fecha_inicio': DateFormat('yyyy-MM-dd').format(_fechaInicio!),
       };
       try {
         await ClientesApi().addCliente(cliente);
@@ -157,25 +154,19 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
       if (_tipoCliente != 'ONG') {
         _razonSocialController.clear();
       }
-      if (_tipoCliente != 'Sujeto Excluido') {
-        _fechaFin = null;
-        _porcentajeRetencionController.text = '';
-      } else {
-        _porcentajeRetencionController.text = '10.0';
-      }
     });
   }
 
-  Future<void> _seleccionarFechaFin() async {
+  Future<void> _seleccionarFecha() async {
     final fecha = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: _fechaInicio ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
     if (fecha != null) {
       setState(() {
-        _fechaFin = fecha;
+        _fechaInicio = fecha;
       });
     }
   }
@@ -199,7 +190,7 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
                   'Contribuyente Jurídico',
                   'Natural',
                   'ONG',
-                  'Sujeto Excluido'
+                  'Cliente de Paso'
                 ]
                     .map((tipo) =>
                         DropdownMenuItem(value: tipo, child: Text(tipo)))
@@ -218,64 +209,72 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
                         : null,
                 maxLength: 100,
               ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _direccionController,
-                decoration: InputDecoration(
-                    labelText: "Dirección", border: OutlineInputBorder()),
-                validator: (value) =>
-                    value == null || value.isEmpty ? "Requerido" : null,
-                maxLength: 200,
-              ),
-              SizedBox(height: 15),
-              if (_tipoCliente == 'Natural' ||
-                  _tipoCliente == 'Consumidor Final')
+              if (_tipoCliente != 'Cliente de Paso') ...[
+                SizedBox(height: 15),
                 TextFormField(
-                  controller: _duiController,
+                  controller: _direccionController,
                   decoration: InputDecoration(
-                      labelText: "DUI", border: OutlineInputBorder()),
-                  validator: _validarDUI,
-                  onChanged: _formatearDUI,
+                      labelText: "Dirección", border: OutlineInputBorder()),
+                  validator: (value) =>
+                      value == null || value.isEmpty ? "Requerido" : null,
+                  maxLength: 200,
                 ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _nitController,
-                decoration: InputDecoration(
-                    labelText: "NIT", border: OutlineInputBorder()),
-                validator: _validarNIT,
-                onChanged: _formatearNIT,
-              ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _registroContribuyenteController,
-                decoration: InputDecoration(
-                    labelText: "Registro Contribuyente (NCR)",
-                    border: OutlineInputBorder()),
-                validator: (value) =>
-                    value == null || value.isEmpty ? "Requerido" : null,
-              ),
-              SizedBox(height: 15),
-              if (_tipoCliente == 'Contribuyente Jurídico') ...[
+                SizedBox(height: 15),
                 TextFormField(
-                  controller: _representanteLegalController,
+                  controller: _departamentoController,
                   decoration: InputDecoration(
-                      labelText: "Representante Legal",
-                      border: OutlineInputBorder()),
+                      labelText: "Departamento", border: OutlineInputBorder()),
                   validator: (value) =>
                       value == null || value.isEmpty ? "Requerido" : null,
                 ),
                 SizedBox(height: 15),
+                if (_tipoCliente == 'Natural' ||
+                    _tipoCliente == 'Consumidor Final')
+                  TextFormField(
+                    controller: _duiController,
+                    decoration: InputDecoration(
+                        labelText: "DUI", border: OutlineInputBorder()),
+                    validator: _validarDUI,
+                    onChanged: _formatearDUI,
+                  ),
+                SizedBox(height: 15),
                 TextFormField(
-                  controller: _direccionRepresentanteController,
+                  controller: _nitController,
                   decoration: InputDecoration(
-                      labelText: "Dirección del Representante",
+                      labelText: "NIT", border: OutlineInputBorder()),
+                  validator: _validarNIT,
+                  onChanged: _formatearNIT,
+                ),
+                SizedBox(height: 15),
+                TextFormField(
+                  controller: _registroContribuyenteController,
+                  decoration: InputDecoration(
+                      labelText: "Registro Contribuyente (NCR)",
                       border: OutlineInputBorder()),
                   validator: (value) =>
                       value == null || value.isEmpty ? "Requerido" : null,
                 ),
-              ],
-              SizedBox(height: 15),
-              if (_tipoCliente == 'ONG')
+                if (_tipoCliente == 'Contribuyente Jurídico') ...[
+                  SizedBox(height: 15),
+                  TextFormField(
+                    controller: _representanteLegalController,
+                    decoration: InputDecoration(
+                        labelText: "Representante Legal",
+                        border: OutlineInputBorder()),
+                    validator: (value) =>
+                        value == null || value.isEmpty ? "Requerido" : null,
+                  ),
+                  SizedBox(height: 15),
+                  TextFormField(
+                    controller: _direccionRepresentanteController,
+                    decoration: InputDecoration(
+                        labelText: "Dirección del Representante",
+                        border: OutlineInputBorder()),
+                    validator: (value) =>
+                        value == null || value.isEmpty ? "Requerido" : null,
+                  ),
+                ],
+                if (_tipoCliente == 'ONG') SizedBox(height: 15),
                 TextFormField(
                   controller: _razonSocialController,
                   decoration: InputDecoration(
@@ -283,42 +282,33 @@ class _AgregarClienteScreenState extends State<AgregarClienteScreen> {
                   validator: (value) =>
                       value == null || value.isEmpty ? "Requerido" : null,
                 ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                    labelText: "Email", border: OutlineInputBorder()),
-                validator: _validarEmail,
-              ),
-              SizedBox(height: 15),
-              TextFormField(
-                controller: _telefonoController,
-                decoration: InputDecoration(
-                    labelText: "Teléfono", border: OutlineInputBorder()),
-                validator: _validarTelefono,
-                onChanged: _formatearTelefono,
-              ),
-              SizedBox(height: 15),
-              if (_tipoCliente == 'Sujeto Excluido') ...[
-                InkWell(
-                  onTap: _seleccionarFechaFin,
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                        labelText: "Fecha Fin", border: OutlineInputBorder()),
-                    child: Text(_fechaFin != null
-                        ? DateFormat('dd/MM/yyyy').format(_fechaFin!)
-                        : "Seleccionar Fecha"),
-                  ),
+                SizedBox(height: 15),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                      labelText: "Email", border: OutlineInputBorder()),
+                  validator: _validarEmail,
                 ),
                 SizedBox(height: 15),
                 TextFormField(
-                  controller: _porcentajeRetencionController,
+                  controller: _telefonoController,
                   decoration: InputDecoration(
-                      labelText: "Porcentaje de Retención",
-                      border: OutlineInputBorder()),
-                  readOnly: true,
+                      labelText: "Teléfono", border: OutlineInputBorder()),
+                  validator: _validarTelefono,
+                  onChanged: _formatearTelefono,
                 ),
               ],
+              SizedBox(height: 15),
+              InkWell(
+                onTap: () => _seleccionarFecha,
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                      labelText: "Fecha Inicio", border: OutlineInputBorder()),
+                  child: Text(_fechaInicio != null
+                      ? DateFormat('dd/MM/yyyy').format(_fechaInicio!)
+                      : "Seleccionar Fecha"),
+                ),
+              ),
               SizedBox(height: 20),
               ElevatedButton(
                   onPressed: _agregarCliente, child: Text("Guardar Cliente")),
